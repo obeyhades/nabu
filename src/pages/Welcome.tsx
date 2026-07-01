@@ -32,13 +32,13 @@ export default function Welcome() {
         className="w-full max-w-xs rounded-full border-2 border-purple-200 bg-white px-6 py-3 text-center text-lg outline-none focus:border-purple-500 dark:border-purple-900 dark:bg-zinc-800 dark:text-white"
       />
 
-      <div className="grid max-w-xs grid-cols-6 gap-2">
+      <div className="grid w-full max-w-xs grid-cols-6 gap-2">
         {AVATARS.map((a) => (
           <button
             key={a}
             onClick={() => setAvatar(a)}
             className={cn(
-              "rounded-2xl p-2 text-3xl transition active:scale-90",
+              "flex aspect-square items-center justify-center rounded-2xl text-3xl transition active:scale-90",
               avatar === a
                 ? "bg-purple-200 ring-2 ring-purple-500 dark:bg-purple-900"
                 : "bg-white dark:bg-zinc-800"

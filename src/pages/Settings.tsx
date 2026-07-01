@@ -58,7 +58,7 @@ export default function Settings() {
               onClick={() => setProfile(draftName.trim() || "Vän", a)}
               aria-label={`Välj ${a}`}
               className={cn(
-                "rounded-2xl p-2 text-3xl transition active:scale-90",
+                "flex aspect-square items-center justify-center rounded-2xl text-3xl transition active:scale-90",
                 avatar === a
                   ? "bg-purple-200 ring-2 ring-purple-500 dark:bg-purple-900"
                   : "bg-zinc-100 dark:bg-zinc-700"
