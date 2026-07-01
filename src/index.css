@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+/* Klass-baserat mörkt läge: dark:-varianter gäller när <html> har .dark */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #fefcf6, #f6ecd6);
+  color: #27272a;
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+html.dark body {
+  background: linear-gradient(to bottom, #1e1b2e, #0f0f17);
+  color: #e5e7eb;
+}
+
+/* Egen scrollbar som matchar temat */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c4b5fd transparent;
+}
