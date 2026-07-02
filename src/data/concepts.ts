@@ -1,14 +1,15 @@
 import type { Concept, Category, Level } from "../types";
 
-export const CATEGORIES: { id: Category; name: string; emoji: string }[] = [
-  { id: "animals", name: "Djur", emoji: "🐾" },
-  { id: "food", name: "Mat", emoji: "🍽️" },
-  { id: "fruit", name: "Frukt", emoji: "🍓" },
-  { id: "vegetables", name: "Grönsaker", emoji: "🥕" },
-  { id: "vehicles", name: "Fordon", emoji: "🚗" },
-  { id: "body", name: "Kroppsdelar", emoji: "✋" },
-  { id: "numbers", name: "Siffror", emoji: "🔢" },
-  { id: "blandad", name: "Blandad", emoji: "🎲" },
+/** `tint` = kategorins färgvärld (barn navigerar per färg före text). */
+export const CATEGORIES: { id: Category; name: string; emoji: string; tint: string }[] = [
+  { id: "animals", name: "Djur", emoji: "🐾", tint: "bg-amber-100 border-amber-300 dark:bg-amber-900/40 dark:border-amber-700" },
+  { id: "food", name: "Mat", emoji: "🍽️", tint: "bg-rose-100 border-rose-300 dark:bg-rose-900/40 dark:border-rose-700" },
+  { id: "fruit", name: "Frukt", emoji: "🍓", tint: "bg-pink-100 border-pink-300 dark:bg-pink-900/40 dark:border-pink-700" },
+  { id: "vegetables", name: "Grönsaker", emoji: "🥕", tint: "bg-green-100 border-green-300 dark:bg-green-900/40 dark:border-green-700" },
+  { id: "vehicles", name: "Fordon", emoji: "🚗", tint: "bg-sky-100 border-sky-300 dark:bg-sky-900/40 dark:border-sky-700" },
+  { id: "body", name: "Kroppsdelar", emoji: "✋", tint: "bg-orange-100 border-orange-300 dark:bg-orange-900/40 dark:border-orange-700" },
+  { id: "numbers", name: "Siffror", emoji: "🔢", tint: "bg-indigo-100 border-indigo-300 dark:bg-indigo-900/40 dark:border-indigo-700" },
+  { id: "blandad", name: "Blandad", emoji: "🎲", tint: "bg-violet-100 border-violet-300 dark:bg-violet-900/40 dark:border-violet-700" },
 ];
 
 /**

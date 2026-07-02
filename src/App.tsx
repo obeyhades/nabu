@@ -10,6 +10,9 @@ import MemoryGame from "./pages/MemoryGame";
 import SpellingGame from "./pages/SpellingGame";
 import MathGame from "./pages/MathGame";
 import AbcGame from "./pages/AbcGame";
+import ListeningGame from "./pages/ListeningGame";
+import CountingGame from "./pages/CountingGame";
+import { Backdrop } from "./components/Backdrop";
 import { useProfile } from "./stores/useProfile";
 import { useTheme } from "./stores/useTheme";
 
@@ -23,18 +26,23 @@ export default function App() {
   }, [theme]);
 
   return (
-    <Routes>
-      <Route path="/" element={hasProfile ? <Navigate to="/dashboard" replace /> : <Welcome />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/collection" element={<Collection />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/admin" element={<Admin />} />
-      <Route path="/game/flashcards" element={<FlashcardsGame />} />
-      <Route path="/game/memory" element={<MemoryGame />} />
-      <Route path="/game/spelling" element={<SpellingGame />} />
-      <Route path="/game/math" element={<MathGame />} />
-      <Route path="/game/abc" element={<AbcGame />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Backdrop />
+      <Routes>
+        <Route path="/" element={hasProfile ? <Navigate to="/dashboard" replace /> : <Welcome />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/collection" element={<Collection />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/game/flashcards" element={<FlashcardsGame />} />
+        <Route path="/game/memory" element={<MemoryGame />} />
+        <Route path="/game/spelling" element={<SpellingGame />} />
+        <Route path="/game/math" element={<MathGame />} />
+        <Route path="/game/abc" element={<AbcGame />} />
+        <Route path="/game/listen" element={<ListeningGame />} />
+        <Route path="/game/counting" element={<CountingGame />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }

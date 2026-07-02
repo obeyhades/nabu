@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Volume2, VolumeX } from "lucide-react";
+import { BackButton } from "../components/BackButton";
 import { LanguagePicker } from "../components/LanguagePicker";
 import { SpeakableText } from "../components/SpeakableText";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -32,9 +33,7 @@ export default function Settings() {
   return (
     <main className="mx-auto max-w-xl p-6 pb-24">
       <div className="mb-6 flex items-center gap-3">
-        <Link to="/dashboard" className="text-zinc-400" aria-label="Tillbaka">
-          ←
-        </Link>
+        <BackButton to="/dashboard" />
         <h1 className="text-2xl font-bold">Inställningar</h1>
       </div>
 

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { Volume2 } from "lucide-react";
 import { CONCEPTS, conceptsByLevel } from "../data/concepts";
 import { getLanguage } from "../data/languages";
@@ -10,23 +9,14 @@ import { useSpeech } from "../hooks/useSpeech";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { LevelPicker } from "../components/LevelPicker";
 import { ProgressBar } from "../components/ProgressBar";
-import { LevelUpBanner } from "../components/LevelUpBanner";
-import { StarRating } from "../components/StarRating";
-import { Button } from "../components/Button";
+import { BackButton } from "../components/BackButton";
+import { VictoryScreen } from "../components/VictoryScreen";
 import { celebrate } from "../lib/celebrate";
 import { playCorrect, playWrong, playLevelUp } from "../lib/sfx";
-import { starKey } from "../lib/progress";
+import { starKey, goldStarKey } from "../lib/progress";
+import { shuffle } from "../lib/shuffle";
 import { cn } from "../lib/cn";
-import type { Category, Level, LangCode } from "../types";
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+import type { Category, Concept, Level, LangCode } from "../types";
 
 const firstLetter = (c: { labels: Partial<Record<LangCode, string>> }, lang: LangCode) =>
   (c.labels[lang] ?? c.labels.sv ?? "").charAt(0).toLocaleUpperCase();
@@ -39,28 +29,28 @@ export default function AbcGame() {
 
   const [category, setCategory] = useState<Category | null>(null);
   const [level, setLevel] = useState<Level | null>(null);
+  const [gold, setGold] = useState(false);
+  const [concepts, setConcepts] = useState<Concept[]>([]);
   const [index, setIndex] = useState(0);
   const [options, setOptions] = useState<string[]>([]);
   const [picked, setPicked] = useState<string | null>(null);
   const [mistakes, setMistakes] = useState(0);
   const [done, setDone] = useState(false);
 
-  const concepts = category && level ? conceptsByLevel(category, level) : [];
   const current = concepts[index];
   const word = current ? current.labels[lang] ?? current.labels.sv ?? "" : "";
   const answer = word.charAt(0).toLocaleUpperCase();
-  const showWord = level !== null && level <= 2; // dölj ordet på högre nivåer
+  const showWord = level !== null && level <= 2 && !gold; // dölj ordet på högre nivåer/guld
   const stars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
+  const xp = stars * XP_PER_STAR * (gold ? 2 : 1);
 
   // Nya svarsalternativ + läs upp ordet när frågan byts
   useEffect(() => {
     if (!current) return;
     const others = [
-      ...new Set(
-        CONCEPTS.map((c) => firstLetter(c, lang)).filter((l) => l && l !== answer)
-      ),
+      ...new Set(CONCEPTS.map((c) => firstLetter(c, lang)).filter((l) => l && l !== answer)),
     ];
-    setOptions(shuffle([answer, ...shuffle(others).slice(0, 2)]));
+    setOptions(shuffle([answer, ...shuffle(others).slice(0, gold ? 4 : 2)]));
     setPicked(null);
     speak(word, lang, current.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -73,8 +63,9 @@ export default function AbcGame() {
       playCorrect();
       window.setTimeout(() => {
         if (index === concepts.length - 1) {
-          addStars(starKey("abc", category, level), stars);
-          completeLesson(stars * XP_PER_STAR);
+          const finalStars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
+          addStars(gold ? goldStarKey("abc", category, level) : starKey("abc", category, level), finalStars);
+          completeLesson(finalStars * XP_PER_STAR * (gold ? 2 : 1));
           celebrate();
           playLevelUp();
           setDone(true);
@@ -89,8 +80,11 @@ export default function AbcGame() {
     }
   };
 
-  const startLevel = (lvl: Level) => {
+  const startLevel = (lvl: Level, isGold = false) => {
+    if (!category) return;
     setLevel(lvl);
+    setGold(isGold);
+    setConcepts(shuffle(conceptsByLevel(category, lvl)));
     setIndex(0);
     setMistakes(0);
     setPicked(null);
@@ -106,7 +100,8 @@ export default function AbcGame() {
       <LevelPicker
         game="abc"
         category={category}
-        onPick={startLevel}
+        onPick={(l) => startLevel(l)}
+        onPickGold={(l) => startLevel(l, true)}
         onBack={() => setCategory(null)}
       />
     );
@@ -114,54 +109,36 @@ export default function AbcGame() {
   // 3) Klar
   if (done) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
-        <div className="text-7xl">🎉</div>
-        <h1 className="text-3xl font-bold">Bra jobbat!</h1>
-        <StarRating value={stars} size={44} />
-        <p className="text-zinc-500 dark:text-zinc-400">
-          +{stars * XP_PER_STAR} XP · {mistakes === 0 ? "Helt rätt!" : `${mistakes} fel`}
-        </p>
-        <LevelUpBanner />
-        <div className="flex flex-wrap justify-center gap-3">
-          {level < 4 && (
-            <Button
-              onClick={() => startLevel((level + 1) as Level)}
-              className="bg-emerald-500 text-white"
-            >
-              Nästa nivå →
-            </Button>
-          )}
-          <Button onClick={() => startLevel(level)} className="bg-teal-500 text-white">
-            Spela igen
-          </Button>
-          <Button
-            onClick={() => setLevel(null)}
-            className="bg-white text-teal-600 dark:bg-zinc-800 dark:text-teal-300"
-          >
-            Byt nivå
-          </Button>
-        </div>
-      </main>
+      <VictoryScreen
+        stars={stars}
+        xp={xp}
+        detail={mistakes === 0 ? "Helt rätt!" : `${mistakes} fel`}
+        gold={gold}
+        onNext={level < 4 && !gold ? () => startLevel((level + 1) as Level) : undefined}
+        onReplay={() => startLevel(level, gold)}
+        onChangeLevel={() => setLevel(null)}
+      />
     );
   }
 
   // 4) Spela
   return (
     <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
-      <div className="w-full pt-2">
-        <ProgressBar value={index / concepts.length} />
+      <div className="flex items-center gap-3 pt-2">
+        <BackButton onClick={() => setLevel(null)} />
+        <ProgressBar value={(index + 1) / concepts.length} />
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-6">
         <div className="text-8xl">{current.emoji}</div>
 
         {showWord && (
-          <div className="text-3xl font-bold text-teal-600 dark:text-teal-300">{word}</div>
+          <div className="text-3xl font-bold text-rose-500 dark:text-rose-300">{word}</div>
         )}
 
         <button
           onClick={() => speak(word, lang, current.id)}
-          className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-teal-600 shadow active:scale-95 dark:bg-zinc-800 dark:text-teal-300"
+          className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-rose-500 shadow active:scale-95 dark:bg-zinc-800 dark:text-rose-300"
         >
           <Volume2 size={18} /> Hör ordet
         </button>
@@ -170,7 +147,7 @@ export default function AbcGame() {
           Vilken bokstav börjar ordet på?
         </p>
 
-        <div className="grid w-full grid-cols-3 gap-3">
+        <div className={cn("grid w-full gap-3", gold ? "grid-cols-5" : "grid-cols-3")}>
           {options.map((opt) => (
             <button
               key={opt}
@@ -179,7 +156,7 @@ export default function AbcGame() {
               className={cn(
                 "flex h-20 items-center justify-center rounded-3xl text-4xl font-black shadow transition active:scale-95",
                 picked === null &&
-                  "bg-white text-teal-600 hover:-translate-y-0.5 dark:bg-zinc-800 dark:text-teal-300",
+                  "bg-white text-rose-500 hover:-translate-y-0.5 dark:bg-zinc-800 dark:text-rose-300",
                 picked !== null && opt === answer && "bg-emerald-500 text-white",
                 picked !== null && opt !== answer && opt === picked && "bg-red-400 text-white",
                 picked !== null &&
@@ -196,10 +173,6 @@ export default function AbcGame() {
         <span dir="ltr" className="font-semibold text-zinc-500 dark:text-zinc-400">
           {index + 1} / {concepts.length}
         </span>
-
-        <Link to="/dashboard" className="text-zinc-400">
-          ← Tillbaka
-        </Link>
       </div>
     </main>
   );

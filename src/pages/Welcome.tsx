@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useProfile } from "../stores/useProfile";
 import { AVATARS } from "../data/avatars";
 import { Button } from "../components/Button";
+import { Mascot } from "../components/Mascot";
 import { cn } from "../lib/cn";
 
 export default function Welcome() {
@@ -18,7 +19,7 @@ export default function Welcome() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
-      <div className="text-7xl">🦉</div>
+      <Mascot mood="idle" className="text-7xl" />
       <div>
         <h1 className="text-5xl font-black text-purple-600 dark:text-purple-400">Nabu</h1>
         <p className="mt-1 text-lg text-zinc-600 dark:text-zinc-400">Lär dig ord på flera språk!</p>

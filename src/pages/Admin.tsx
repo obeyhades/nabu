@@ -22,7 +22,7 @@ const GOAL_PRESETS = [10, 20, 30, 50];
 function allStarKeys(): string[] {
   const keys: string[] = [];
   for (const g of GAMES) {
-    const cats = g.id === "math" ? ["all"] : CATEGORIES.map((c) => c.id);
+    const cats = g.solo ? ["all"] : CATEGORIES.map((c) => c.id);
     for (const cat of cats) for (const lvl of LEVELS) keys.push(starKey(g.id, cat, lvl.level));
   }
   return keys;

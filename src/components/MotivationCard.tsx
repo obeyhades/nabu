@@ -1,6 +1,7 @@
 import { useStats, todayStr, xpLevelInfo } from "../stores/useStats";
 import { ProgressBar } from "./ProgressBar";
 import { LevelRing } from "./LevelRing";
+import { Mascot } from "./Mascot";
 
 /** Nabu-maskoten peppar + visar nivå, streak, XP och dagligt mål (Duolingo-stil). */
 export function MotivationCard() {
@@ -23,7 +24,7 @@ export function MotivationCard() {
   return (
     <div className="rounded-3xl bg-white p-4 shadow dark:bg-zinc-800">
       <div className="flex items-center gap-3">
-        <span className="text-5xl">🦉</span>
+        <Mascot mood="idle" className="text-5xl" />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{msg}</p>
           <div className="mt-0.5 flex gap-4 text-sm text-zinc-600 dark:text-zinc-300">

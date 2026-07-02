@@ -11,9 +11,9 @@ import type { GameId } from "../types";
 export default function Collection() {
   const stars = useProfile((s) => s.stars);
 
-  // Matte har ingen kategori ("all"), övriga spel har Djur/Mat/Siffror
+  // Solo-spel (matte, räkna) har ingen kategori ("all")
   const catsFor = (game: GameId): string[] =>
-    game === "math" ? ["all"] : CATEGORIES.map((c) => c.id);
+    GAMES.find((g) => g.id === game)?.solo ? ["all"] : CATEGORIES.map((c) => c.id);
 
   let total = 0;
   let earned = 0;
@@ -65,8 +65,8 @@ export default function Collection() {
             <h2 className="mb-3 flex items-center gap-2 font-semibold">
               <span className="text-2xl">{game.emoji}</span> {game.name}
             </h2>
-            {game.id === "math" ? (
-              levelRow("math", "all")
+            {game.solo ? (
+              levelRow(game.id, "all")
             ) : (
               <div className="space-y-4">
                 {CATEGORIES.map((cat) => (

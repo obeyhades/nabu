@@ -31,7 +31,14 @@ export type Concept = {
   labels: Partial<Record<LangCode, string>>;
 };
 
-export type GameId = "flashcards" | "memory" | "spelling" | "math" | "abc";
+export type GameId =
+  | "flashcards"
+  | "memory"
+  | "spelling"
+  | "math"
+  | "abc"
+  | "listen"
+  | "counting";
 
 export type GameDefinition = {
   id: GameId;
@@ -40,6 +47,7 @@ export type GameDefinition = {
   emoji: string;
   gradient: string; // tailwind-gradient för spelkortet
   path: string;
+  solo?: boolean; // spelet har ingen kategori-väljare (t.ex. matte)
 };
 
 export type Profile = {

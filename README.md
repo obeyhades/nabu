@@ -9,11 +9,15 @@ Namnet kommer från **Nabu**, den babyloniska guden för skrivkonst och visdom.
 - 🌍 **Fem språk** – svenska, engelska, grekiska, ryska och arabiska (med RTL för arabiska)
 - 📚 **8 kategorier** – Djur, Mat, Frukt, Grönsaker, Fordon, Kroppsdelar, Siffror + **Blandad** (dynamisk mix från alla); ~110 ord
 - 🎚️ **Fyra svårighetsgrader** – Nybörjare, Mellannivå, Utmanare, Mästare; nivåerna låses upp i tur och ordning (inspirerat av Nadira). Orden blir längre/svårare och hjälpen minskar högre upp
-- 🖼️ **Ord & bilder** – lyssna och lär dig nya ord
+- 🖼️ **Ord & bilder** – lär dig orden och visa vad du kan i ett litet quiz på slutet
+- 👂 **Hör & hitta** – ren hörförståelse: lyssna på ordet och hitta rätt bild
 - 🃏 **Para ihop** – memory i två lägen: **ord & bild** eller **bild & bild** (fler kort på högre nivåer)
-- 🔤 **Stava ordet** – fyll i ordet genom att **skriva på tangentbordet och/eller trycka på bokstäverna** (extra vilse-bokstäver på högre nivåer)
+- 🔤 **Stava ordet** – skriv och/eller tryck ihop ordet; fel bokstav studsar (arabiska stavas med hela bokstavs-kluster inkl. harakat)
 - 🧮 **Matte** – plus, minus och gånger med tryck-på-svar och bildstöd (svårare per nivå)
 - 🅰️ **ABC-äventyr** – lär dig bokstäverna: "vilken bokstav börjar ordet på?" (ordet göms på högre nivåer)
+- 🎈 **Räkna!** – "hur många ser du?" – bro mellan antal och siffra för de minsta (siffran läses upp på valt språk)
+- 🥇 **Guldnivåer** – 3 stjärnor låser upp ett svårare guld-omspel av samma nivå med dubbel XP
+- 🌌 **Levande värld** – äng med moln på dagen, stjärnhimmel med måne i mörkt läge, jublande uggle-maskot och festliga vinstskärmar
 - 🔊 **Uppläsning** med förinspelade neural-röster som buntas med appen – funkar på **alla enheter**, offline (enhetens egen röst används bara som reserv)
 - ⭐ **Stjärnor** som belöning per nivå
 - 🎮 **Motivation (Duolingo-stil)** – daglig streak 🔥, XP & spelar-nivå 🎓 (ring mot nästa nivå + "Ny nivå!"-fest), dagligt mål, ljudeffekter och Nabu-maskoten som peppar

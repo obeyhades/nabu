@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { conceptsByLevel } from "../data/concepts";
 import { getLanguage } from "../data/languages";
 import { useSettings } from "../stores/useSettings";
@@ -9,28 +8,19 @@ import { useSpeech } from "../hooks/useSpeech";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { LevelPicker } from "../components/LevelPicker";
 import { ProgressBar } from "../components/ProgressBar";
-import { LevelUpBanner } from "../components/LevelUpBanner";
-import { StarRating } from "../components/StarRating";
+import { BackButton } from "../components/BackButton";
+import { VictoryScreen } from "../components/VictoryScreen";
 import { Button } from "../components/Button";
 import { celebrate } from "../lib/celebrate";
 import { playWrong, playLevelUp } from "../lib/sfx";
-import { starKey } from "../lib/progress";
+import { starKey, goldStarKey } from "../lib/progress";
+import { shuffle } from "../lib/shuffle";
+import { graphemes, normChar } from "../lib/graphemes";
 import { cn } from "../lib/cn";
-import type { Category, Level } from "../types";
+import type { Category, Concept, Level } from "../types";
 
+// Extra vilse-bokstäver i bokstavsbanken per nivå (+2 i guld-läge)
 const EXTRA_BY_LEVEL: Record<Level, number> = { 1: 0, 2: 1, 3: 2, 4: 3 };
-const XP = 3 * XP_PER_STAR;
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "").trim();
 
 export default function SpellingGame() {
   const lang = useSettings((s) => s.lang);
@@ -39,46 +29,57 @@ export default function SpellingGame() {
   const { speak } = useSpeech();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // pekskärm: öppna inte OS-tangentbordet förrän barnet själv trycker i fältet
+  const isTouch = useMemo(
+    () => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches,
+    []
+  );
+  const [kbMode, setKbMode] = useState(false);
+
   const [category, setCategory] = useState<Category | null>(null);
   const [level, setLevel] = useState<Level | null>(null);
+  const [gold, setGold] = useState(false);
+  const [concepts, setConcepts] = useState<Concept[]>([]);
   const [index, setIndex] = useState(0);
   const [bank, setBank] = useState<string[]>([]);
-  const [typed, setTyped] = useState("");
+  const [accepted, setAccepted] = useState<string[]>([]); // godkända grafem hittills
   const [wrong, setWrong] = useState(false);
+  const [mistakes, setMistakes] = useState(0);
   const [locked, setLocked] = useState(false);
   const [done, setDone] = useState(false);
 
-  const concepts = category && level ? conceptsByLevel(category, level) : [];
   const current = concepts[index];
-  const word = (current ? current.labels[lang] ?? current.labels.sv ?? "" : "")
-    .toLowerCase()
-    .replace(/\s+/g, "");
+  const word = (current ? current.labels[lang] ?? current.labels.sv ?? "" : "").replace(/\s+/g, "");
+  const targetG = useMemo(() => graphemes(word), [word]);
+  const stars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
+  const xp = stars * XP_PER_STAR * (gold ? 2 : 1);
 
+  // Nytt ord: ny bokstavsbank, töm svar, ev. ledtråd
   useEffect(() => {
     if (!current || !level) return;
-    const extra = EXTRA_BY_LEVEL[level];
+    const extra = EXTRA_BY_LEVEL[level] + (gold ? 2 : 0);
     const pool = concepts
       .filter((c) => c.id !== current.id)
-      .flatMap((c) =>
-        (c.labels[lang] ?? c.labels.sv ?? "").toLowerCase().replace(/\s+/g, "").split("")
-      );
+      .flatMap((c) => graphemes((c.labels[lang] ?? c.labels.sv ?? "").replace(/\s+/g, "")));
     const distractors = shuffle(pool).slice(0, extra);
-    setBank(shuffle([...word.split(""), ...distractors]));
-    setTyped("");
+    setBank(shuffle([...targetG, ...distractors]));
+    setAccepted([]);
     setWrong(false);
     setLocked(false);
-    if (level <= 2) speak(word, lang, current.id);
+    if (level <= 2 && !gold) speak(word, lang, current.id); // ledtråd på lägre nivåer
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, lang, level]);
+  }, [current?.id, lang, level, gold]);
 
   const win = () => {
     if (!category || !level || !current) return;
+    setLocked(true);
     speak(word, lang, current.id);
     celebrate();
     window.setTimeout(() => {
       if (index === concepts.length - 1) {
-        addStars(starKey("spelling", category, level), 3);
-        completeLesson(XP);
+        const finalStars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
+        addStars(gold ? goldStarKey("spelling", category, level) : starKey("spelling", category, level), finalStars);
+        completeLesson(finalStars * XP_PER_STAR * (gold ? 2 : 1));
         playLevelUp();
         setDone(true);
       } else {
@@ -87,36 +88,40 @@ export default function SpellingGame() {
     }, 900);
   };
 
-  // Gemensamt svarsfält – fylls av både tangentbord och bokstavsknappar
-  const applyAnswer = (val: string) => {
+  const reject = () => {
+    setWrong(true);
+    playWrong();
+    setMistakes((m) => m + 1);
+    window.setTimeout(() => setWrong(false), 500);
+  };
+
+  /** Validera per grafem: fel bokstav släpps aldrig in (skakar istället). */
+  const tryValue = (nextG: string[]) => {
     if (locked) return;
-    setTyped(val);
-    if (norm(val).length >= word.length) {
-      setLocked(true);
-      if (norm(val) === word) {
-        win();
-      } else {
-        setWrong(true);
-        playWrong();
-        window.setTimeout(() => {
-          setTyped("");
-          setWrong(false);
-          setLocked(false);
-        }, 700);
+    for (let i = 0; i < nextG.length; i++) {
+      if (i >= targetG.length || normChar(nextG[i]) !== normChar(targetG[i])) {
+        reject();
+        return;
       }
-    } else {
-      setWrong(false);
     }
+    setAccepted(nextG);
+    if (nextG.length === targetG.length) win();
   };
 
-  const tapLetter = (letter: string) => {
-    applyAnswer(typed + letter);
-    inputRef.current?.focus();
+  const tapLetter = (g: string) => {
+    tryValue([...accepted, g]);
+    if (!isTouch || kbMode) inputRef.current?.focus();
   };
 
-  const startLevel = (lvl: Level) => {
+  const onType = (v: string) => tryValue(graphemes(v.replace(/\s+/g, "")));
+
+  const startLevel = (lvl: Level, isGold = false) => {
+    if (!category) return;
     setLevel(lvl);
+    setGold(isGold);
+    setConcepts(shuffle(conceptsByLevel(category, lvl)));
     setIndex(0);
+    setMistakes(0);
     setDone(false);
   };
 
@@ -129,7 +134,8 @@ export default function SpellingGame() {
       <LevelPicker
         game="spelling"
         category={category}
-        onPick={startLevel}
+        onPick={(l) => startLevel(l)}
+        onPickGold={(l) => startLevel(l, true)}
         onBack={() => setCategory(null)}
       />
     );
@@ -137,40 +143,24 @@ export default function SpellingGame() {
   // 3) Klar
   if (done) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
-        <div className="text-7xl">🎉</div>
-        <h1 className="text-3xl font-bold">Bra jobbat!</h1>
-        <StarRating value={3} size={44} />
-        <p className="text-zinc-500 dark:text-zinc-400">+{XP} XP</p>
-        <LevelUpBanner />
-        <div className="flex flex-wrap justify-center gap-3">
-          {level < 4 && (
-            <Button
-              onClick={() => startLevel((level + 1) as Level)}
-              className="bg-emerald-500 text-white"
-            >
-              Nästa nivå →
-            </Button>
-          )}
-          <Button onClick={() => startLevel(level)} className="bg-purple-500 text-white">
-            Spela igen
-          </Button>
-          <Button
-            onClick={() => setLevel(null)}
-            className="bg-white text-purple-600 dark:bg-zinc-800 dark:text-purple-300"
-          >
-            Byt nivå
-          </Button>
-        </div>
-      </main>
+      <VictoryScreen
+        stars={stars}
+        xp={xp}
+        detail={mistakes === 0 ? "Helt rätt!" : `${mistakes} fel`}
+        gold={gold}
+        onNext={level < 4 && !gold ? () => startLevel((level + 1) as Level) : undefined}
+        onReplay={() => startLevel(level, gold)}
+        onChangeLevel={() => setLevel(null)}
+      />
     );
   }
 
-  // 4) Spela – skriv ELLER tryck på bokstäverna (samma fält)
+  // 4) Spela – skriv på tangentbordet OCH/ELLER tryck på bokstäverna
   return (
     <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
-      <div className="w-full pt-2">
-        <ProgressBar value={index / concepts.length} />
+      <div className="flex items-center gap-3 pt-2">
+        <BackButton onClick={() => setLevel(null)} />
+        <ProgressBar value={(index + 1) / concepts.length} />
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-8">
@@ -178,11 +168,18 @@ export default function SpellingGame() {
 
         <input
           ref={inputRef}
-          autoFocus
-          value={typed}
-          onChange={(e) => applyAnswer(e.target.value)}
+          autoFocus={!isTouch}
+          value={accepted.join("")}
+          onChange={(e) => onType(e.target.value)}
+          onClick={() => {
+            if (isTouch && !kbMode) {
+              setKbMode(true);
+              window.setTimeout(() => inputRef.current?.focus(), 0);
+            }
+          }}
           dir={getLanguage(lang).dir}
           placeholder="Skriv eller tryck…"
+          inputMode={isTouch && !kbMode ? "none" : "text"}
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="none"
@@ -190,10 +187,22 @@ export default function SpellingGame() {
           className={cn(
             "w-full max-w-xs rounded-2xl border-2 bg-white px-5 py-3 text-center text-3xl font-bold lowercase outline-none dark:bg-zinc-800",
             wrong
-              ? "border-red-400 text-red-500"
+              ? "animate-shake border-red-400 text-red-500"
               : "border-purple-300 text-purple-600 focus:border-purple-500 dark:border-purple-800 dark:text-purple-300"
           )}
         />
+        {/* Hur många bokstäver kvar */}
+        <div className="-mt-4 flex gap-1.5" dir="ltr">
+          {targetG.map((_, i) => (
+            <span
+              key={i}
+              className={cn(
+                "h-2 w-6 rounded-full",
+                i < accepted.length ? "bg-emerald-400" : "bg-zinc-300 dark:bg-zinc-600"
+              )}
+            />
+          ))}
+        </div>
 
         {/* Bokstavsbank – tryck för att fylla i fältet */}
         <div className="flex flex-wrap justify-center gap-2">
@@ -202,7 +211,7 @@ export default function SpellingGame() {
               key={i}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => tapLetter(letter)}
-              className="h-14 w-12 rounded-xl bg-white text-2xl font-bold uppercase text-purple-600 shadow transition active:scale-90 dark:bg-zinc-800 dark:text-purple-300"
+              className="h-14 min-w-12 rounded-xl bg-white px-2 text-2xl font-bold uppercase text-purple-600 shadow transition active:scale-90 dark:bg-zinc-800 dark:text-purple-300"
             >
               {letter}
             </button>
@@ -213,9 +222,9 @@ export default function SpellingGame() {
           <Button
             onClick={() => {
               if (!locked) {
-                setTyped("");
+                setAccepted([]);
                 setWrong(false);
-                inputRef.current?.focus();
+                if (!isTouch || kbMode) inputRef.current?.focus();
               }
             }}
             className="bg-white text-purple-600 dark:bg-zinc-800 dark:text-purple-300"
@@ -226,10 +235,6 @@ export default function SpellingGame() {
             {index + 1} / {concepts.length}
           </span>
         </div>
-
-        <Link to="/dashboard" className="text-zinc-400">
-          ← Tillbaka
-        </Link>
       </div>
     </main>
   );

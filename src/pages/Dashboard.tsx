@@ -22,7 +22,8 @@ export default function Dashboard() {
         <MotivationCard />
       </div>
 
-      <section className="mt-6 grid gap-4 sm:grid-cols-2">
+      {/* 2 kolumner även på mobil; udda sista kortet spänner hela bredden */}
+      <section className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2">
         {GAMES.map((g) => (
           <GameCard key={g.id} game={g} />
         ))}
