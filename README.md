@@ -47,7 +47,3 @@ bun run build
 ## 🙏 Erkännande
 
 Inspirerad av **[Lär med Nadira](https://github.com/asifma/lar-med-nadira)** av **Asif Mithawala** — ett gratis, öppet lärprojekt för barn som gav idén och energin till att bygga något i samma anda.
-
-## 📜 Licens
-
-MIT.
