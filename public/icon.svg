@@ -1,4 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#a855f7" />
-  <text x="50%" y="55%" font-family="Georgia, 'Times New Roman', serif" font-size="300" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">N</text>
+  <!-- Nabu-ugglan: appens maskot som ikon. Ritad i enkla former så den är
+       tydlig även i 16px (flik-favicon). Lila natthimmel = varumärket. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6" />
+      <stop offset="1" stop-color="#6d28d9" />
+    </linearGradient>
+  </defs>
+
+  <!-- Bakgrund: lila natthimmel -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <circle cx="86" cy="92" r="10" fill="#ffffff" opacity="0.9" />
+  <circle cx="430" cy="76" r="7" fill="#ffffff" opacity="0.7" />
+  <circle cx="456" cy="148" r="5" fill="#ffffff" opacity="0.5" />
+  <circle cx="58" cy="168" r="5" fill="#ffffff" opacity="0.5" />
+
+  <!-- Örontofsar -->
+  <path d="M138 156 L184 54 L238 142 Z" fill="#f6d7a8" />
+  <path d="M374 156 L328 54 L274 142 Z" fill="#f6d7a8" />
+
+  <!-- Huvud -->
+  <circle cx="256" cy="292" r="186" fill="#f6d7a8" />
+
+  <!-- Ögon: bärnstensring, vitt öga, stor pupill med glimt -->
+  <circle cx="177" cy="262" r="79" fill="#fbbf24" />
+  <circle cx="335" cy="262" r="79" fill="#fbbf24" />
+  <circle cx="177" cy="262" r="60" fill="#ffffff" />
+  <circle cx="335" cy="262" r="60" fill="#ffffff" />
+  <circle cx="177" cy="269" r="31" fill="#3b2a1d" />
+  <circle cx="335" cy="269" r="31" fill="#3b2a1d" />
+  <circle cx="189" cy="256" r="10" fill="#ffffff" />
+  <circle cx="347" cy="256" r="10" fill="#ffffff" />
+
+  <!-- Näbb -->
+  <path d="M256 322 L224 358 Q256 394 288 358 Z" fill="#fb923c" />
+
+  <!-- Magfjädrar -->
+  <path d="M196 428 q30 28 60 0" stroke="#e0b57e" stroke-width="13" fill="none" stroke-linecap="round" />
+  <path d="M256 428 q30 28 60 0" stroke="#e0b57e" stroke-width="13" fill="none" stroke-linecap="round" />
+  <path d="M226 462 q30 26 60 0" stroke="#e0b57e" stroke-width="13" fill="none" stroke-linecap="round" />
 </svg>
