@@ -242,69 +242,82 @@ export default function Admin() {
               unlockAll(keys);
               say("Alla nivåer upplåsta ✓");
             }}
-            className="w-full rounded-2xl bg-zinc-100 px-4 py-3 text-left font-semibold dark:bg-zinc-700"
+            className="w-full rounded-2xl bg-zinc-100 px-4 py-3 text-left dark:bg-zinc-700"
           >
-            🗝️ Lås upp alla nivåer <span className="text-zinc-400">(för test)</span>
+            <span className="font-semibold">🗝️ Lås upp alla nivåer</span>
+            <span className="mt-0.5 block text-xs text-zinc-400">För att testa allt innehåll</span>
           </button>
 
           {confirm === "progress" ? (
-            <div className="flex items-center gap-2 rounded-2xl bg-red-50 p-3 dark:bg-red-950/40">
-              <span className="flex-1 text-sm">Börja om från början? Stjärnor, XP och streak nollställs.</span>
-              <Button
-                onClick={() => {
-                  resetProgress();
-                  resetStats();
-                  setConfirm(null);
-                  say("Börjat om! 🌱");
-                }}
-                className="bg-red-500 text-white"
-              >
-                Ja
-              </Button>
-              <Button
-                onClick={() => setConfirm(null)}
-                className="bg-white text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-              >
-                Avbryt
-              </Button>
+            <div className="space-y-3 rounded-2xl bg-red-50 p-4 dark:bg-red-950/40">
+              <p className="text-sm font-medium">
+                Börja om från början? Stjärnor, XP och streak nollställs.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    resetProgress();
+                    resetStats();
+                    setConfirm(null);
+                    say("Börjat om! 🌱");
+                  }}
+                  className="flex-1 whitespace-nowrap bg-red-500 text-sm text-white"
+                >
+                  Ja, börja om
+                </Button>
+                <Button
+                  onClick={() => setConfirm(null)}
+                  className="flex-1 whitespace-nowrap bg-white text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                >
+                  Avbryt
+                </Button>
+              </div>
             </div>
           ) : (
             <button
               onClick={() => setConfirm("progress")}
-              className="w-full rounded-2xl bg-zinc-100 px-4 py-3 text-left font-semibold text-red-600 dark:bg-zinc-700 dark:text-red-400"
+              className="w-full rounded-2xl bg-zinc-100 px-4 py-3 text-left dark:bg-zinc-700"
             >
-              🔄 Börja om <span className="text-zinc-400">(nollställ framsteg)</span>
+              <span className="font-semibold text-red-600 dark:text-red-400">🔄 Börja om</span>
+              <span className="mt-0.5 block text-xs text-zinc-400">
+                Nollställ stjärnor, XP och streak
+              </span>
             </button>
           )}
 
           {confirm === "everything" ? (
-            <div className="flex items-center gap-2 rounded-2xl bg-red-50 p-3 dark:bg-red-950/40">
-              <span className="flex-1 text-sm">
+            <div className="space-y-3 rounded-2xl bg-red-50 p-4 dark:bg-red-950/40">
+              <p className="text-sm font-medium">
                 Rensa allt – även namn och avatar? Appen börjar om från start.
-              </span>
-              <Button
-                onClick={() => {
-                  resetProfile();
-                  resetStats();
-                  navigate("/");
-                }}
-                className="bg-red-600 text-white"
-              >
-                Ja
-              </Button>
-              <Button
-                onClick={() => setConfirm(null)}
-                className="bg-white text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-              >
-                Avbryt
-              </Button>
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    resetProfile();
+                    resetStats();
+                    navigate("/");
+                  }}
+                  className="flex-1 whitespace-nowrap bg-red-600 text-sm text-white"
+                >
+                  Ja, rensa
+                </Button>
+                <Button
+                  onClick={() => setConfirm(null)}
+                  className="flex-1 whitespace-nowrap bg-white text-sm text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                >
+                  Avbryt
+                </Button>
+              </div>
             </div>
           ) : (
             <button
               onClick={() => setConfirm("everything")}
-              className="w-full rounded-2xl bg-zinc-100 px-4 py-3 text-left font-semibold text-red-700 dark:bg-zinc-700 dark:text-red-400"
+              className="w-full rounded-2xl bg-zinc-100 px-4 py-3 text-left dark:bg-zinc-700"
             >
-              🧹 Rensa allt <span className="text-zinc-400">(börja om helt)</span>
+              <span className="font-semibold text-red-700 dark:text-red-400">🧹 Rensa allt</span>
+              <span className="mt-0.5 block text-xs text-zinc-400">
+                Även namn och avatar – appen börjar om helt
+              </span>
             </button>
           )}
         </div>
