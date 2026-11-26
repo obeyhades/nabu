@@ -143,7 +143,17 @@ export default function MathGame() {
 
   const startLevel = (lvl: Level, isGold = false) => {
     const d = difficulty(lvl, isGold);
-    setProblems(Array.from({ length: d.rounds }, () => makeProblem(lvl, Math.min(d.options, 5))));
+    // inga dubbletter i samma lektion (t.ex. "2 + 1" två gånger)
+    const seen = new Set<string>();
+    const list: Problem[] = [];
+    for (let tries = 0; list.length < d.rounds && tries < 200; tries++) {
+      const p = makeProblem(lvl, Math.min(d.options, 5));
+      const key = `${p.a}${p.op}${p.b}`;
+      if (seen.has(key) && tries < 150) continue;
+      seen.add(key);
+      list.push(p);
+    }
+    setProblems(list);
     setLevel(lvl);
     setGold(isGold);
     setIndex(0);

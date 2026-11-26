@@ -1,4 +1,6 @@
 import type { GameId, Level } from "../types";
+import { GAMES } from "../data/gameRegistry";
+import { LEVEL_COUNT } from "../data/levels";
 
 /**
  * Nyckel för stjärnor per spel × kategori × nivå.
@@ -100,4 +102,31 @@ export function pathsFor(game: { id: GameId; solo?: boolean }, categories: strin
   if (game.id === "trace") return langs.map((l) => `trace-${l}`);
   if (game.solo) return ["all"];
   return ["adventure", ...categories];
+}
+
+const GAME_IDS = new Set<string>(GAMES.map((g) => g.id));
+
+/**
+ * Tolka en stjärnnyckel, t.ex. "memory:animals:3" eller "trace:trace-ar:13:gold".
+ * Kategorin kan vara en riktig kategori, "all", "adventure" eller "trace-<språk>".
+ * Okända spel, nivåer utanför 1–20 och trasiga nycklar ger null.
+ */
+export function parseLessonKey(
+  key: string
+): { game: GameId; category: string; level: Level; gold: boolean } | null {
+  const parts = key.split(":");
+  if (parts.length < 3 || parts.length > 4) return null;
+  const [game, category, lvl, gold] = parts;
+  if (gold !== undefined && gold !== "gold") return null;
+  if (!GAME_IDS.has(game) || !category || !/^\d+$/.test(lvl)) return null;
+  const level = Number(lvl);
+  if (level < 1 || level > LEVEL_COUNT) return null;
+  return { game: game as GameId, category, level, gold: gold === "gold" };
+}
+
+/** Summan av alla stjärnor i profilen (vanliga och guld). Trasiga värden räknas som 0. */
+export function sumStars(stars: Record<string, number>): number {
+  let sum = 0;
+  for (const v of Object.values(stars)) if (Number.isFinite(v) && v > 0) sum += v;
+  return sum;
 }

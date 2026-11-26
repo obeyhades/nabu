@@ -71,10 +71,9 @@ export default function FlashcardsGame() {
   const startQuiz = () => {
     if (!category || !level || !d) return;
     const pool = distractorPool(category, level);
-    const asked = shuffle(concepts);
-    const extra = shuffle(concepts).slice(0, Math.max(0, Math.min(d.rounds, 8) - asked.length));
+    // varje inlärt ord frågas exakt en gång, i ny ordning (inga upprepningar)
     setQuiz(
-      [...asked, ...extra].map((c) => ({
+      shuffle(concepts).map((c) => ({
         concept: c,
         options: shuffle([c, ...pickDistractors(c, pool, d.options - 1, d.t)]),
       }))
@@ -188,7 +187,14 @@ export default function FlashcardsGame() {
     );
   }
 
-  // Bläddra & lär
+  // Bläddra & lär (skydd som i de andra spelen: inget kort → tillbaka till nivåerna)
+  if (!current) {
+    return (
+      <main className="mx-auto max-w-xl p-6">
+        <GameHeader onBack={() => setLevel(null)} progress={0} level={level} gold={gold} />
+      </main>
+    );
+  }
   const isLast = index === concepts.length - 1;
   return (
     <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">

@@ -88,6 +88,11 @@ function shortWords(lang: LangCode, band: number): string[] {
   return out;
 }
 
+/** Nivån som heltal 1–20 (samma klämning för byggning och inspelning). */
+function clampLevel(level: Level): Level {
+  return Math.min(20, Math.max(1, Math.round(level)));
+}
+
 /**
  * Nivåstigen (1–20):
  *  1–5   versaler i 5 bitar (arabiska: första halvan av alfabetet)
@@ -96,10 +101,10 @@ function shortWords(lang: LangCode, band: number): string[] {
  *  13–15 repetition av kluriga bokstäver (versaler, gemener, blandat)
  *  16–20 korta ord (band 1 för 16–17, band 2 för 18–20)
  * Orden returneras med ev. arabiska vokaltecken – använd `traceText()` för att rita.
+ * `lvl` är redan klämd till 1–20.
  */
-export function traceLevel(lang: LangCode, level: Level): TraceLevel {
+function buildTraceLevel(lang: LangCode, lvl: Level): TraceLevel {
   const a = ALPHABETS[lang] ?? ALPHABETS.sv;
-  const lvl = Math.min(20, Math.max(1, Math.round(level)));
   const half = Math.ceil(a.upper.length / 2);
 
   if (lvl <= 5) {
@@ -124,4 +129,34 @@ export function traceLevel(lang: LangCode, level: Level): TraceLevel {
   let pool = shortWords(lang, band);
   if (pool.length < count) pool = [...pool, ...shortWords(lang, 1).filter((w) => !pool.includes(w))];
   return { items: sample(pool, count), kind: "word" };
+}
+
+/**
+ * Senast byggda spårnivån. Klistermärkesboken läser den i finish() för att veta
+ * exakt vilka bokstäver/ord lektionen hade. TraceGame spelar alla items (bitarna
+ * är ≤ 7 = MAX_ROUNDS) men blandar ordningen själv – mängden är det som räknas.
+ */
+let lastTrace: ({ lang: LangCode; level: Level } & TraceLevel) | null = null;
+
+/** Nivåstigen (se `buildTraceLevel`). Varje anrop sparas som senaste spårnivån. */
+export function traceLevel(lang: LangCode, level: Level): TraceLevel {
+  const lvl = clampLevel(level);
+  const built = buildTraceLevel(lang, lvl);
+  lastTrace = { lang, level: lvl, items: [...built.items], kind: built.kind };
+  return built;
+}
+
+/** Senaste spårnivåns items – bara om språk och nivå stämmer, annars null. */
+export function lastTraceItems(lang: LangCode, level: Level): TraceLevel | null {
+  if (!lastTrace || lastTrace.lang !== lang || lastTrace.level !== clampLevel(level)) return null;
+  return { items: [...lastTrace.items], kind: lastTrace.kind };
+}
+
+/**
+ * De fasta items för nivå 1–12 (bokstäver och siffror – ingen slump där).
+ * Nivå 13–20 slumpas och ger null. Sparas inte som senaste spårnivån.
+ */
+export function fixedTraceItems(lang: LangCode, level: Level): string[] | null {
+  const lvl = clampLevel(level);
+  return lvl <= 12 ? buildTraceLevel(lang, lvl).items : null;
 }

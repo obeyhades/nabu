@@ -66,10 +66,129 @@ html.dark body {
 .animate-shake { animation: shake 0.45s ease-in-out; }
 .animate-pop { animation: pop 0.45s ease-out both; }
 
+/* ── Klistermärkesboken & Nabus bo: rörelser ──────────────
+   Bara transform och opacity animeras (aldrig filter). Klasserna läggs på ett
+   INRE element: placerade saker i boet har redan en egen transform. */
+@keyframes sticker-slap {
+  0% { transform: scale(1.15); }
+  55% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+@keyframes sticker-hop {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  15% { transform: translateY(0) scale(1.08, 0.92); }
+  45% { transform: translateY(-0.4em) scale(0.96, 1.05); }
+  70% { transform: translateY(0) scale(1.06, 0.94); }
+  85% { transform: translateY(-0.08em) scale(1, 1); }
+}
+@keyframes sticker-drive {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10% { transform: translateX(-0.06em) rotate(2deg); }
+  45%, 55% { transform: translateX(0.7em) rotate(-2deg); }
+  90% { transform: translateX(-0.04em) rotate(1deg); }
+}
+@keyframes sticker-roll {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  50% { transform: translateX(0.45em) rotate(200deg); }
+}
+@keyframes sticker-wobble {
+  0%, 100% { transform: rotate(0deg) scale(1, 1); }
+  20% { transform: rotate(-9deg) scale(1.08, 0.92); }
+  40% { transform: rotate(7deg) scale(0.94, 1.06); }
+  60% { transform: rotate(-4deg) scale(1.04, 0.96); }
+  80% { transform: rotate(2deg) scale(1, 1); }
+}
+@keyframes sticker-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  15%, 45%, 75% { transform: rotate(-10deg); }
+  30%, 60%, 90% { transform: rotate(10deg); }
+}
+/* Bokstaven vänds: tecknet byts mitt i vändningen (Sticker sköter bytet). */
+@keyframes sticker-flip {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0); }
+}
+@keyframes sticker-chug {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(0.1em, -0.05em); }
+  40% { transform: translate(0.2em, 0); }
+  60% { transform: translate(0.3em, -0.05em); }
+  80% { transform: translate(0.15em, 0); }
+}
+@keyframes sticker-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+/* Fel plats: en mjuk vickning (ingen skakning, inget straff). */
+@keyframes wiggle-soft {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  25% { transform: translateX(-4px) rotate(-3deg); }
+  50% { transform: translateX(4px) rotate(3deg); }
+  75% { transform: translateX(-2px) rotate(-1deg); }
+}
+/* Glansen sveper över (masken flyttas) – bara två varv, sedan vila. */
+@keyframes sheen {
+  from { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
+  to { -webkit-mask-position: 0% 0; mask-position: 0% 0; }
+}
+/* Sidan är klar: alla märken vinkar i en våg (fördröjning per märke inline). */
+@keyframes page-wave {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-0.25em) rotate(-6deg); }
+  60% { transform: translateY(0) rotate(4deg); }
+}
+@keyframes item-bounce {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  20% { transform: translateY(0) scale(1.1, 0.9); }
+  50% { transform: translateY(-18%) scale(0.95, 1.06); }
+  75% { transform: translateY(0) scale(1.04, 0.96); }
+}
+/* Påsen gungar från snöret. */
+@keyframes pouch-shake {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-14deg); }
+  40% { transform: rotate(11deg); }
+  60% { transform: rotate(-7deg); }
+  80% { transform: rotate(4deg); }
+}
+/* Stjärnfall över fönstret (Kikaren). --u = scenens enhet (bredd/400 px). */
+@keyframes shooting-star {
+  0% { transform: translate(0, 0) rotate(22deg); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translate(calc(var(--u, 1px) * 90), calc(var(--u, 1px) * 36)) rotate(22deg); opacity: 0; }
+}
+/* Norrskenet böljar långsamt (stilla gradient vid reducerad rörelse). */
+@keyframes aurora-drift {
+  from { transform: translateX(-12%) skewX(-6deg); }
+  to { transform: translateX(12%) skewX(6deg); }
+}
+
+.animate-sticker-slap { animation: sticker-slap 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.animate-sticker-hop { animation: sticker-hop 0.7s ease-out; transform-origin: 50% 100%; }
+.animate-sticker-drive { animation: sticker-drive 1.1s ease-in-out; }
+.animate-sticker-roll { animation: sticker-roll 1s ease-in-out; }
+.animate-sticker-wobble { animation: sticker-wobble 0.7s ease-in-out; transform-origin: 50% 100%; }
+.animate-sticker-wiggle { animation: sticker-wiggle 0.6s ease-in-out; }
+.animate-sticker-flip { animation: sticker-flip 0.4s ease-in-out; }
+.animate-sticker-chug { animation: sticker-chug 0.5s ease-in-out 2; }
+.animate-sticker-spin { animation: sticker-spin 0.7s ease-in-out; }
+.animate-wiggle-soft { animation: wiggle-soft 0.4s ease-in-out; }
+.animate-sheen { animation: sheen 1.6s ease-in-out 0.3s 2 both; }
+.animate-page-wave { animation: page-wave 0.6s ease-in-out both; }
+.animate-item-bounce { animation: item-bounce 0.6s ease-out; transform-origin: 50% 100%; }
+.animate-pouch-shake { animation: pouch-shake 0.6s ease-in-out; transform-origin: 50% 12%; }
+.animate-shooting-star { animation: shooting-star 1.2s ease-in both; }
+.animate-aurora { animation: aurora-drift 9s ease-in-out infinite alternate; }
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-float, .animate-bob, .animate-cheer, .animate-shake, .animate-pop {
+  .animate-float, .animate-bob, .animate-cheer, .animate-shake, .animate-pop,
+  .animate-sticker-slap, .animate-sticker-hop, .animate-sticker-drive, .animate-sticker-roll,
+  .animate-sticker-wobble, .animate-sticker-wiggle, .animate-sticker-flip, .animate-sticker-chug,
+  .animate-sticker-spin, .animate-wiggle-soft, .animate-sheen, .animate-page-wave,
+  .animate-item-bounce, .animate-pouch-shake, .animate-shooting-star, .animate-aurora {
     animation: none;
   }
+  .sticker-shine { animation: none; opacity: 0.35; }
 }
 
 /* ── Stjärnhimmel (mörkt läge, ren CSS – inga bilder) ─── */
@@ -88,3 +207,259 @@ html.dark body {
   background-image: radial-gradient(circle, rgba(168, 85, 247, 0.07) 1.5px, transparent 1.6px);
   background-size: 28px 28px;
 }
+
+/* ── Klistermärken ────────────────────────────────────────
+   Vit utstansad kant (fyra skuggor) + en mjuk skugga. Filtren är statiska. */
+.sticker {
+  --ol: max(2px, 0.055em);
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+  filter: drop-shadow(var(--ol) 0 0 #fff) drop-shadow(calc(var(--ol) * -1) 0 0 #fff)
+    drop-shadow(0 var(--ol) 0 #fff) drop-shadow(0 calc(var(--ol) * -1) 0 #fff)
+    drop-shadow(0 0.05em 0.04em rgb(60 30 0 / 0.28));
+}
+/* Guldkant: ordet fanns i ett avklarat guldspel. */
+.sticker--gold {
+  filter: drop-shadow(var(--ol) 0 0 #ffd54a) drop-shadow(calc(var(--ol) * -1) 0 0 #ffd54a)
+    drop-shadow(0 var(--ol) 0 #ffd54a) drop-shadow(0 calc(var(--ol) * -1) 0 #ffd54a)
+    drop-shadow(0 0.05em 0.04em rgb(60 30 0 / 0.28));
+}
+/* Silhuett på en tom plats (formen att matcha). Inverterad i mörkt läge. */
+.sticker-ghost { filter: brightness(0) opacity(0.16); }
+html.dark .sticker-ghost { filter: brightness(0) invert(1) opacity(0.18); }
+
+/* Blank: en dubblett av märket med en ljus, maskad rand (aria-hidden, aldrig ::after-text).
+   Med .animate-sheen sveper randen över två gånger och vilar sedan utanför. */
+.sticker-shine {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  filter: brightness(1.9) saturate(0.3);
+  -webkit-mask-image: linear-gradient(110deg, transparent 38%, #000 50%, transparent 62%);
+  mask-image: linear-gradient(110deg, transparent 38%, #000 50%, transparent 62%);
+  -webkit-mask-size: 250% 100%;
+  mask-size: 250% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 50% 0;
+  mask-position: 50% 0;
+}
+
+/* Uppvikt hörn på ett klistermärkeskort (vinstskärmens valrad). Kortet behöver position: relative. */
+.sticker-curl::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-top-left-radius: 0.5rem;
+  pointer-events: none;
+  background: linear-gradient(to top left, transparent 50%, #d4d4d8 50%, #fafafa 100%);
+}
+html.dark .sticker-curl::after {
+  background: linear-gradient(to top left, transparent 50%, #27272a 50%, #52525b 100%);
+}
+
+/* ── Nabus bo ─────────────────────────────────────────── */
+/* Lampans sken (bara när lampan är tänd och en lampa sitter i krok/hylla). --gx/--gy = lampans plats. */
+.nest-glow {
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 20%), rgb(255 214 120 / 0.18), transparent 60%);
+}
+html.dark .nest-glow {
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 20%), rgb(255 214 120 / 0.45), transparent 60%);
+}
+/* Stjärnfallet: en liten ljusstrimma (rörelsen är .animate-shooting-star). */
+.shooting-star {
+  position: absolute;
+  width: calc(var(--u, 1px) * 26);
+  height: calc(var(--u, 1px) * 2);
+  border-radius: 999px;
+  background: linear-gradient(to right, transparent, #fff);
+  pointer-events: none;
+}
+
+/* ── Scener i klistermärkesboken ──────────────────────────
+   Ljusa nog för att tomma platsers kant (zinc-500) har ≥3:1 i ljust läge och
+   mörka nog för zinc-400 i mörkt läge. Mörkt läge följer html.dark (klassen),
+   aldrig prefers-color-scheme. Egen konst – inga bilder utifrån. */
+.scene-meadow {
+  background-color: #f0fdf4;
+  background-image:
+    radial-gradient(circle at 12px 14px, rgb(255 255 255 / 0.8) 2px, transparent 2.6px),
+    radial-gradient(circle at 36px 34px, rgb(250 204 21 / 0.35) 2px, transparent 2.6px),
+    linear-gradient(to bottom, #e0f2fe 0%, #f0fdf4 30%, #dcfce7 70%, #bbf7d0 100%);
+  background-size: 48px 48px, 48px 48px, 100% 100%;
+}
+html.dark .scene-meadow {
+  background-color: #11231b;
+  background-image:
+    radial-gradient(circle at 12px 14px, rgb(255 255 255 / 0.12) 1.5px, transparent 2px),
+    radial-gradient(circle at 36px 34px, rgb(250 204 21 / 0.1) 1.5px, transparent 2px),
+    linear-gradient(to bottom, #1e1b4b 0%, #16213a 35%, #12261d 100%);
+  background-size: 48px 48px, 48px 48px, 100% 100%;
+}
+
+/* Rutig duk */
+.scene-table {
+  background-color: #fff7ed;
+  background-image:
+    repeating-linear-gradient(0deg, rgb(251 113 133 / 0.13) 0 16px, transparent 16px 32px),
+    repeating-linear-gradient(90deg, rgb(251 113 133 / 0.13) 0 16px, transparent 16px 32px);
+}
+html.dark .scene-table {
+  background-color: #241a22;
+  background-image:
+    repeating-linear-gradient(0deg, rgb(251 113 133 / 0.07) 0 16px, transparent 16px 32px),
+    repeating-linear-gradient(90deg, rgb(251 113 133 / 0.07) 0 16px, transparent 16px 32px);
+}
+
+/* Fruktträdgård: varmt ljus och löv */
+.scene-orchard {
+  background-color: #fffbeb;
+  background-image:
+    radial-gradient(ellipse 7px 4px at 14px 16px, rgb(132 204 22 / 0.22) 98%, transparent 100%),
+    radial-gradient(ellipse 6px 4px at 40px 42px, rgb(251 146 60 / 0.18) 98%, transparent 100%),
+    linear-gradient(to bottom, #fef3c7 0%, #fffbeb 45%, #fde7d3 100%);
+  background-size: 54px 54px, 54px 54px, 100% 100%;
+}
+html.dark .scene-orchard {
+  background-color: #221a12;
+  background-image:
+    radial-gradient(ellipse 7px 4px at 14px 16px, rgb(132 204 22 / 0.1) 98%, transparent 100%),
+    radial-gradient(ellipse 6px 4px at 40px 42px, rgb(251 146 60 / 0.08) 98%, transparent 100%),
+    linear-gradient(to bottom, #2a1f14 0%, #221a12 50%, #1c1510 100%);
+  background-size: 54px 54px, 54px 54px, 100% 100%;
+}
+
+/* Köksträdgård: odlingsrader */
+.scene-garden {
+  background-color: #f7fee7;
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0 40px, rgb(180 83 9 / 0.1) 40px 46px),
+    linear-gradient(to bottom, #ecfccb 0%, #f7fee7 50%, #fef3c7 100%);
+}
+html.dark .scene-garden {
+  background-color: #141f12;
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0 40px, rgb(180 83 9 / 0.12) 40px 46px),
+    linear-gradient(to bottom, #172414 0%, #141f12 50%, #1d1810 100%);
+}
+
+/* Väg med streckad mittlinje */
+.scene-road {
+  background-color: #e2e8f0;
+  background-image:
+    linear-gradient(to bottom, #fde047 0 50%, transparent 50%),
+    linear-gradient(to right, transparent 8%, rgb(255 255 255 / 0.7) 8% 9%, transparent 9% 91%, rgb(255 255 255 / 0.7) 91% 92%, transparent 92%),
+    linear-gradient(to bottom, #f1f5f9, #e2e8f0);
+  background-size: 6px 44px, 100% 100%, 100% 100%;
+  background-position: center top, 0 0, 0 0;
+  background-repeat: repeat-y, no-repeat, no-repeat;
+}
+html.dark .scene-road {
+  background-color: #1e2430;
+  background-image:
+    linear-gradient(to bottom, rgb(253 224 71 / 0.35) 0 50%, transparent 50%),
+    linear-gradient(to right, transparent 8%, rgb(255 255 255 / 0.12) 8% 9%, transparent 9% 91%, rgb(255 255 255 / 0.12) 91% 92%, transparent 92%),
+    linear-gradient(to bottom, #232a37, #1a1f29);
+  background-size: 6px 44px, 100% 100%, 100% 100%;
+  background-position: center top, 0 0, 0 0;
+  background-repeat: repeat-y, no-repeat, no-repeat;
+}
+
+/* Ritning: rutnät på ljusblått (marinblått på natten) */
+.scene-blueprint {
+  background-color: #e0f2fe;
+  background-image:
+    linear-gradient(rgb(59 130 246 / 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(59 130 246 / 0.16) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+html.dark .scene-blueprint {
+  background-color: #0c1a3a;
+  background-image:
+    linear-gradient(rgb(147 197 253 / 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(147 197 253 / 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Krittavla: ljus tavla på dagen, klassisk grön på natten */
+.scene-chalk {
+  background-color: #ecfdf5;
+  background-image:
+    radial-gradient(ellipse 60% 18% at 25% 20%, rgb(255 255 255 / 0.85), transparent 70%),
+    radial-gradient(ellipse 50% 14% at 75% 65%, rgb(255 255 255 / 0.7), transparent 70%),
+    linear-gradient(to bottom, #d1fae5, #ecfdf5);
+}
+html.dark .scene-chalk {
+  background-color: #17322a;
+  background-image:
+    radial-gradient(ellipse 60% 18% at 25% 20%, rgb(255 255 255 / 0.06), transparent 70%),
+    radial-gradient(ellipse 50% 14% at 75% 65%, rgb(255 255 255 / 0.05), transparent 70%),
+    linear-gradient(to bottom, #1a382f, #142b24);
+}
+
+/* Affisch: papper med prickar */
+.scene-poster {
+  background-color: #fffbeb;
+  background-image: radial-gradient(circle, rgb(120 53 15 / 0.12) 1.3px, transparent 1.6px);
+  background-size: 20px 20px;
+}
+html.dark .scene-poster {
+  background-color: #221c15;
+  background-image: radial-gradient(circle, rgb(253 230 138 / 0.08) 1.3px, transparent 1.6px);
+  background-size: 20px 20px;
+}
+
+/* Räknetåget: himmel och ett spår längst ner */
+.scene-rails {
+  background-color: #f8fafc;
+  background-image:
+    linear-gradient(to right, rgb(146 64 14 / 0.3) 0 6px, transparent 6px),
+    linear-gradient(to bottom, transparent 0 4px, rgb(120 113 108 / 0.45) 4px 7px, transparent 7px 15px, rgb(120 113 108 / 0.45) 15px 18px, transparent 18px),
+    linear-gradient(to bottom, #e0f2fe 0%, #f8fafc 55%, #f5f5f4 100%);
+  background-size: 24px 22px, 100% 22px, 100% 100%;
+  background-position: 0 100%, 0 100%, 0 0;
+  background-repeat: repeat-x, no-repeat, no-repeat;
+}
+html.dark .scene-rails {
+  background-color: #151a24;
+  background-image:
+    linear-gradient(to right, rgb(180 83 9 / 0.3) 0 6px, transparent 6px),
+    linear-gradient(to bottom, transparent 0 4px, rgb(168 162 158 / 0.35) 4px 7px, transparent 7px 15px, rgb(168 162 158 / 0.35) 15px 18px, transparent 18px),
+    linear-gradient(to bottom, #1e1b4b 0%, #171c28 55%, #151a24 100%);
+  background-size: 24px 22px, 100% 22px, 100% 100%;
+  background-position: 0 100%, 0 100%, 0 0;
+  background-repeat: repeat-x, no-repeat, no-repeat;
+}
+
+/* Pärlbandet: tunna trådar */
+.scene-string {
+  background-color: #fdf2f8;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 62px, rgb(219 39 119 / 0.16) 62px 64px);
+}
+html.dark .scene-string {
+  background-color: #231523;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 62px, rgb(244 114 182 / 0.12) 62px 64px);
+}
+
+/* Märkeshyllan: ljus träpanel */
+.scene-shelf {
+  background-color: #fdf6ec;
+  background-image: repeating-linear-gradient(90deg, rgb(180 120 60 / 0.08) 0 2px, transparent 2px 46px);
+}
+html.dark .scene-shelf {
+  background-color: #211a14;
+  background-image: repeating-linear-gradient(90deg, rgb(214 168 120 / 0.06) 0 2px, transparent 2px 46px);
+}
+
+/* Fler ord: enkelt papper */
+.scene-plain { background-color: #fafaf9; }
+html.dark .scene-plain { background-color: #1c1b22; }

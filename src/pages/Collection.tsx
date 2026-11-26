@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { GAMES } from "../data/gameRegistry";
 import { CATEGORIES, categoryInfo } from "../data/concepts";
 import { LANGUAGES } from "../data/languages";
@@ -25,6 +26,8 @@ function pathLabel(path: string): { name: string; emoji: string } {
 /**
  * Min samling: varje spel med sina stigar. En stig visas som en rad med
  * 20 små prickar (en per nivå) + stjärnor – fylls i när barnet spelar.
+ * Hör till boken i menyn ("Boken" lyser här), med en länk tillbaka dit.
+ * Stjärnorna här är stigarnas stjärnor – inte de i Stjärnpåsen.
  */
 export default function Collection() {
   const stars = useProfile((s) => s.stars);
@@ -44,8 +47,15 @@ export default function Collection() {
     <main className="mx-auto max-w-3xl p-6 pb-24">
       <h1 className="text-2xl font-bold">Min samling 🏆</h1>
       <p className="text-zinc-500 dark:text-zinc-400">
-        ⭐ {earned} av {total} stjärnor · 🏆 {trophies} hela stigar klara
+        ⭐ <span dir="ltr">{earned}</span> av <span dir="ltr">{total}</span> stjärnor på stigarna · 🏆{" "}
+        <span dir="ltr">{trophies}</span> hela stigar klara
       </p>
+      <Link
+        to="/stickers"
+        className="mt-3 inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 py-2 font-semibold text-rose-700 shadow outline-none transition active:scale-95 focus-visible:ring-4 focus-visible:ring-purple-400 dark:bg-zinc-800 dark:text-rose-300"
+      >
+        <span aria-hidden>📖</span> Till klistermärkesboken
+      </Link>
 
       <div className="mt-6 space-y-6">
         {GAMES.map((game, gi) => {

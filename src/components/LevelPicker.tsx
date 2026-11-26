@@ -64,7 +64,7 @@ export function LevelPicker({
         </h1>
       </div>
       <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
-        {cleared} / {LEVEL_COUNT} nivåer klara · ⭐ {total} / {LEVEL_COUNT * 3}
+        {cleared} / {LEVEL_COUNT} nivåer klara · ⭐ {total} / {LEVEL_COUNT * 3} på stigen
       </p>
 
       <div className="space-y-7">

@@ -113,3 +113,106 @@ export function playLevelUp() {
     /* tyst */
   }
 }
+
+// ── Klistermärkesboken och Nabus bo ──────────────────────
+
+/** Ett glid från en frekvens till en annan (exponentiellt – låter naturligt). */
+function sweep(from: number, to: number, dur: number, type: OscillatorType, gain: number) {
+  const c = audio();
+  if (!c) return;
+  const t = c.currentTime;
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(from, t);
+  osc.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g);
+  g.connect(c.destination);
+  osc.start(t);
+  osc.stop(t + dur + 0.01);
+}
+
+/** Ett klistermärke dras loss från arket. */
+export function playPeel() {
+  if (!enabled()) return;
+  try {
+    sweep(1200, 400, 0.12, "triangle", 0.1);
+  } catch {
+    /* tyst */
+  }
+}
+
+/** Klistermärket fastnar på sidan. */
+export function playStick() {
+  if (!enabled()) return;
+  try {
+    tone(180, 0, 0.05, "triangle", 0.12);
+    tone(140, 0.06, 0.06, "triangle", 0.1);
+  } catch {
+    /* tyst */
+  }
+}
+
+/** Köp i Stjärnboden: tre glada toner (C-E-G). */
+export function playBuy() {
+  if (!enabled()) return;
+  try {
+    [523, 659, 784].forEach((f, i) => tone(f, i * 0.08, 0.16));
+  } catch {
+    /* tyst */
+  }
+}
+
+/** En sak ställs på sin plats i boet. */
+export function playPlace() {
+  if (!enabled()) return;
+  try {
+    tone(520, 0, 0.06);
+    tone(260, 0.04, 0.08, "triangle", 0.08);
+  } catch {
+    /* tyst */
+  }
+}
+
+/** Lampknappen: ett litet klick. */
+export function playLamp() {
+  if (!enabled()) return;
+  try {
+    tone(1800, 0, 0.02, "square", 0.05);
+  } catch {
+    /* tyst */
+  }
+}
+
+/** Trumman: ett mjukt dunk. */
+export function playDrum() {
+  if (!enabled()) return;
+  try {
+    sweep(120, 50, 0.25, "sine", 0.3);
+  } catch {
+    /* tyst */
+  }
+}
+
+/** En pianoton (Pianot spelar C-E-G med den här). */
+export function playNote(freq: number) {
+  if (!enabled()) return;
+  try {
+    tone(freq, 0, 0.3, "triangle", 0.12);
+  } catch {
+    /* tyst */
+  }
+}
+
+/** En vän i boet kvittrar. */
+export function playChirp() {
+  if (!enabled()) return;
+  try {
+    tone(1400, 0, 0.06);
+    tone(1800, 0.07, 0.06);
+  } catch {
+    /* tyst */
+  }
+}

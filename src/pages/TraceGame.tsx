@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useAnimate } from "framer-motion";
 import { Eraser, Volume2 } from "lucide-react";
 import { CONCEPTS } from "../data/concepts";
+import { shuffle } from "../lib/shuffle";
 import { traceLevel, traceText, type TraceKind } from "../data/alphabets";
 import { getLanguage } from "../data/languages";
 import { LEVEL_COUNT } from "../data/levels";
@@ -266,7 +267,8 @@ function makeItems(
   const { items, kind } = traceLevel(lang, level);
   return {
     kind,
-    items: items.slice(0, MAX_ROUNDS).map((label) => ({
+    // blanda ordningen så att samma nivå inte känns likadan varje gång
+    items: shuffle(items).slice(0, MAX_ROUNDS).map((label) => ({
       label,
       text: kind === "word" ? traceText(label) : label,
       conceptId:

@@ -108,6 +108,17 @@ export default function Settings() {
         <ThemeToggle />
       </section>
 
+      {/* Tips till föräldrar: en hemskärms-app rensas mer sällan av webbläsaren */}
+      <p className="mt-4 flex items-start gap-3 rounded-3xl bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+        <span aria-hidden className="text-xl leading-none">
+          📲
+        </span>
+        <span>
+          <span className="font-semibold">Tips till föräldrar: </span>
+          Lägg Nabu på hemskärmen – då sparas boken och boet säkrare på den här enheten.
+        </span>
+      </p>
+
       <Link
         to="/admin"
         className="mt-4 block text-center text-sm text-zinc-400 hover:text-zinc-500"

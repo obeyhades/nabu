@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect, type ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Welcome from "./pages/Welcome";
 import Dashboard from "./pages/Dashboard";
@@ -19,6 +19,17 @@ import TraceGame from "./pages/TraceGame";
 import { Backdrop } from "./components/Backdrop";
 import { useProfile } from "./stores/useProfile";
 import { useTheme } from "./stores/useTheme";
+
+// Klistermärkesboken och Nabus bo laddas först när barnet går dit (egna chunks,
+// som PWA:n förhämtar). Ingen global MotionConfig – sidorna har var sin.
+const StickerBook = lazy(() => import("./pages/StickerBook"));
+const StickerPage = lazy(() => import("./pages/StickerPage"));
+const Nest = lazy(() => import("./pages/Nest"));
+
+/** En lat sida med en egen, tom reserv medan den laddas. */
+function Lazy({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<main className="p-6" />}>{children}</Suspense>;
+}
 
 export default function App() {
   const theme = useTheme((s) => s.theme);
@@ -49,6 +60,9 @@ export default function App() {
         <Route path="/game/balloon" element={<BalloonGame />} />
         <Route path="/game/catapult" element={<CatapultGame />} />
         <Route path="/game/trace" element={<TraceGame />} />
+        <Route path="/stickers" element={<Lazy><StickerBook /></Lazy>} />
+        <Route path="/stickers/:pageId" element={<Lazy><StickerPage /></Lazy>} />
+        <Route path="/nest" element={<Lazy><Nest /></Lazy>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

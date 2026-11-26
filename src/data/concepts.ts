@@ -186,7 +186,7 @@ export const CONCEPTS: Concept[] = [
 
 export const REAL_CATEGORIES = CATEGORIES.filter((c) => c.id !== "blandad").map((c) => c.id);
 
-/** Äventyrsstigen går genom kategorierna i tur och ordning, en per nivå. */
+/** Äventyret blandar ord från alla kategorier – nya ord varje gång. */
 export const ADVENTURE = {
   id: "adventure" as const,
   name: "Äventyret",
@@ -194,13 +194,9 @@ export const ADVENTURE = {
   tint: "bg-purple-100 border-purple-300 dark:bg-purple-900/40 dark:border-purple-700",
 };
 
-export function adventureCategory(level: Level): Category {
-  return REAL_CATEGORIES[(level - 1) % REAL_CATEGORIES.length];
-}
-
-/** Den kategori orden faktiskt hämtas från (äventyr → kategori för nivån). */
-export function resolveCategory(cat: PlayCategory, level: Level): Category {
-  return cat === "adventure" ? adventureCategory(level) : cat;
+/** Den kategori orden hämtas från (äventyret = alla kategorier, som "blandad"). */
+export function resolveCategory(cat: PlayCategory): Category {
+  return cat === "adventure" ? "blandad" : cat;
 }
 
 /** Namn/emoji/färg för en kategori eller äventyret. */
@@ -214,23 +210,51 @@ export function conceptsByCategory(category: Category): Concept[] {
   return CONCEPTS.filter((c) => c.category === category);
 }
 
+// Ord som nyss spelats, per kategori – de får lägre chans nästa gång så att
+// samma ord inte kommer om och om igen (glöms när appen laddas om).
+const recentByCategory = new Map<Category, Set<string>>();
+
+/** Slumpa `count` ord utan återläggning, där `weight` styr chansen. */
+function weightedSample<T>(items: T[], count: number, weight: (t: T) => number): T[] {
+  const pool = items.map((item) => ({ item, w: Math.max(0.0001, weight(item)) }));
+  const out: T[] = [];
+  while (out.length < count && pool.length) {
+    const total = pool.reduce((sum, p) => sum + p.w, 0);
+    let r = Math.random() * total;
+    let i = 0;
+    while (i < pool.length - 1 && (r -= pool[i].w) > 0) i++;
+    out.push(pool[i].item);
+    pool.splice(i, 1);
+  }
+  return out;
+}
+
 /**
- * Ord för en lektion på en viss nivå. Bandet (1–4) styr vilka ord som är med:
- * först ord från nivåns eget band, sen fylls det på med lättare ord – så
- * även små kategorier räcker till 10 uppgifter. Svårare band kommer inte med.
+ * Ord för en lektion på en viss nivå – slumpas varje gång.
+ * Bandet (1–4) styr svårigheten: nivåns eget band har störst chans, lättare
+ * ord kommer med som repetition, och ord som nyss spelades får lägre chans.
+ * Räcker orden inte till lånas några från nästa band. Ordningen blandas.
  */
 export function lessonWords(cat: PlayCategory, level: Level, count: number): Concept[] {
   const band = bandOf(level);
-  const category = resolveCategory(cat, level);
-  const pool = conceptsByCategory(category).filter((c) => c.level <= band);
-  const current = shuffle(pool.filter((c) => c.level === band));
-  const easier = shuffle(pool.filter((c) => c.level < band)).sort((a, b) => b.level - a.level);
-  return [...current, ...easier].slice(0, count);
+  const category = resolveCategory(cat);
+  const all = conceptsByCategory(category);
+  let pool = all.filter((c) => c.level <= band);
+  if (pool.length < count + 2) pool = all.filter((c) => c.level <= band + 1);
+  const recent = recentByCategory.get(category) ?? new Set<string>();
+
+  const picked = weightedSample(pool, count, (c) => {
+    const bandWeight =
+      c.level === band ? 8 : c.level === band - 1 ? 2 : c.level > band ? 0.3 : 1;
+    return bandWeight * (recent.has(c.id) ? 0.25 : 1);
+  });
+  recentByCategory.set(category, new Set(picked.map((c) => c.id)));
+  return shuffle(picked);
 }
 
 /** Alla ord som kan användas som fel-alternativ (samma kategori, upp till bandet). */
 export function distractorPool(cat: PlayCategory, level: Level): Concept[] {
-  const category = resolveCategory(cat, level);
+  const category = resolveCategory(cat);
   const band = bandOf(level);
   const pool = conceptsByCategory(category).filter((c) => c.level <= band);
   return pool.length >= 8 ? pool : conceptsByCategory(category);
@@ -253,4 +277,9 @@ export function pickDistractors(answer: Concept, pool: Concept[], n: number, clo
 /** Ordet på valt språk (svenska som reserv). */
 export function labelOf(c: Concept, lang: LangCode): string {
   return c.labels[lang] ?? c.labels.sv ?? "";
+}
+
+/** Orden i senaste lektionen för kategorin (läses av klistermärkesboken). */
+export function lastLessonWords(cat: PlayCategory): string[] {
+  return [...(recentByCategory.get(resolveCategory(cat)) ?? [])];
 }

@@ -74,8 +74,12 @@ export default function CountingGame() {
     const [lo, hi] = rangeFor(lvl);
     const emojiPool = shuffle(CONCEPTS.filter((c) => c.category !== "numbers").map((c) => c.emoji));
     const mixed = lvl >= 13 || isGold;
+    let prev = 0;
     const built: Round[] = Array.from({ length: d.rounds }, (_, i) => {
-      const count = randint(lo, hi);
+      // aldrig samma antal två gånger i rad
+      let count = randint(lo, hi);
+      for (let t = 0; count === prev && hi > lo && t < 20; t++) count = randint(lo, hi);
+      prev = count;
       const emoji = emojiPool[(i * 2) % emojiPool.length];
       const other = mixed ? emojiPool[(i * 2 + 1) % emojiPool.length] : null;
       const extra = other ? randint(2, Math.max(3, Math.round(count / 2))) : 0;

@@ -19,7 +19,8 @@ export default function Welcome() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
-      <Mascot mood="idle" className="text-7xl" />
+      {/* Välkomstsidan visar Nabu utan hatt (varumärket) */}
+      <Mascot mood="idle" plain className="text-7xl" />
       <div>
         <h1 className="text-5xl font-black text-purple-600 dark:text-purple-400">Nabu</h1>
         <p className="mt-1 text-lg text-zinc-600 dark:text-zinc-400">Lär dig ord på flera språk!</p>
