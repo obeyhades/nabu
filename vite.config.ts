@@ -9,7 +9,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg"],
+      includeAssets: ["icon.svg", "apple-touch-icon.png"],
       workbox: {
         // bunta även ljudklippen så uppläsning funkar offline
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest,mp3}"],

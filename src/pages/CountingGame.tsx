@@ -36,6 +36,18 @@ function randint(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+/**
+ * Svarsalternativ: rätt antal + de närmaste talen inom 1–9 (slumpat bland
+ * lika nära). Väljer från en färdig lista i stället för att slumpa i en loop –
+ * vid 1 eller 9 finns bara två tal inom ±2, så loopen kunde aldrig bli klar.
+ */
+function makeOptions(count: number, optionCount: number): number[] {
+  const others = shuffle(
+    Array.from({ length: 9 }, (_, i) => i + 1).filter((n) => n !== count)
+  ).sort((a, b) => Math.abs(a - count) - Math.abs(b - count));
+  return shuffle([count, ...others.slice(0, optionCount - 1)]);
+}
+
 /** Räkna! – "hur många ser du?" Bro mellan antal och siffra för de minsta. */
 export default function CountingGame() {
   const navigate = useNavigate();
@@ -64,12 +76,7 @@ export default function CountingGame() {
     const optionCount = isGold ? 4 : 3;
     const built: Round[] = Array.from({ length: ROUNDS }, (_, i) => {
       const count = randint(lo, hi);
-      const opts = new Set<number>([count]);
-      while (opts.size < optionCount) {
-        const cand = count + randint(1, 2) * (Math.random() < 0.5 ? -1 : 1);
-        if (cand >= 1 && cand <= 9) opts.add(cand);
-      }
-      return { emoji: emojiPool[i % emojiPool.length], count, options: shuffle([...opts]) };
+      return { emoji: emojiPool[i % emojiPool.length], count, options: makeOptions(count, optionCount) };
     });
     setLevel(lvl);
     setGold(isGold);

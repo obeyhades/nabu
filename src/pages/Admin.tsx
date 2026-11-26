@@ -7,7 +7,7 @@ import { Button } from "../components/Button";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { useSettings } from "../stores/useSettings";
 import { useProfile } from "../stores/useProfile";
-import { useStats, xpLevelInfo } from "../stores/useStats";
+import { useStats, xpLevelInfo, currentStreak } from "../stores/useStats";
 import { starKey } from "../lib/progress";
 import { cn } from "../lib/cn";
 
@@ -45,7 +45,7 @@ export default function Admin() {
   const resetProfile = useProfile((s) => s.reset);
 
   const xp = useStats((s) => s.xp);
-  const streak = useStats((s) => s.streak);
+  const streak = useStats((s) => currentStreak(s.streak, s.lastPlayDate));
   const bestStreak = useStats((s) => s.bestStreak);
   const dailyGoal = useStats((s) => s.dailyGoal);
   const setDailyGoal = useStats((s) => s.setDailyGoal);

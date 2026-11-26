@@ -7,7 +7,15 @@
     <meta name="theme-color" content="#a855f7" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Nabu" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Nabu – Lär dig ord</title>
+    <script>
+      // Sätt mörkt tema innan första ritningen (annars blinkar sidan ljust)
+      try {
+        var t = JSON.parse(localStorage.getItem("nabu-theme") || "{}");
+        if (t.state && t.state.theme === "dark") document.documentElement.classList.add("dark");
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

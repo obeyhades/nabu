@@ -7,7 +7,7 @@ Namnet kommer från **Nabu**, den babyloniska guden för skrivkonst och visdom.
 ## ✨ Funktioner (MVP)
 
 - 🌍 **Fem språk** – svenska, engelska, grekiska, ryska och arabiska (med RTL för arabiska)
-- 📚 **8 kategorier** – Djur, Mat, Frukt, Grönsaker, Fordon, Kroppsdelar, Siffror + **Blandad** (dynamisk mix från alla); ~110 ord
+- 📚 **8 kategorier** – Djur, Mat, Frukt, Grönsaker, Fordon, Kroppsdelar, Siffror + **Blandad** (dynamisk mix från alla); ~130 ord
 - 🎚️ **Fyra svårighetsgrader** – Nybörjare, Mellannivå, Utmanare, Mästare; nivåerna låses upp i tur och ordning (inspirerat av Nadira). Orden blir längre/svårare och hjälpen minskar högre upp
 - 🖼️ **Ord & bilder** – lär dig orden och visa vad du kan i ett litet quiz på slutet
 - 👂 **Hör & hitta** – ren hörförståelse: lyssna på ordet och hitta rätt bild
@@ -39,7 +39,7 @@ bun run build
 
 ## 🧩 Lägg till innehåll
 
-- **Nytt ord:** lägg till ett koncept i `src/data/concepts.ts` (skriv `labels` per språk + `level` 1–4). Idag: 60 ord i 3 kategorier × 4 nivåer
+- **Nytt ord:** lägg till ett koncept i `src/data/concepts.ts` (skriv `labels` per språk + `level` 1–4). Idag: ~130 ord i 7 kategorier × 4 nivåer
 - **Nytt språk:** sätt `available: true` i `src/data/languages.ts` och fyll i `labels` för det språket
 - **Nytt spel:** lägg till i `src/data/gameRegistry.ts` + en sida + en route
 - **Ljud:** efter att du lagt till ord/språk, kör `bun run audio` för att generera uppläsnings-klippen till `public/audio/` (`bun run audio -- --force` skriver om alla). Orden läses direkt från `concepts.ts` så ljudet hålls i synk.

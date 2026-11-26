@@ -18,6 +18,16 @@ function daysBetween(a: string, b: string): number {
   return Math.round((db - da) / 86_400_000);
 }
 
+/**
+ * Streaken som den ser ut JUST NU: lagrade `streak` uppdateras bara när en
+ * lektion klaras, så om barnet senast spelade i förrgår eller tidigare är den
+ * redan bruten och ska visas som 0.
+ */
+export function currentStreak(streak: number, lastPlayDate: string, today = todayStr()): number {
+  if (!lastPlayDate) return 0;
+  return daysBetween(lastPlayDate, today) <= 1 ? streak : 0;
+}
+
 // Spelar-nivå från total XP. Tröskel för att NÅ nivå L = 25·L·(L-1).
 // L1:0  L2:50  L3:150  L4:300  L5:500 … (snabbt i början, långsammare sen)
 export function levelForXp(xp: number): number {

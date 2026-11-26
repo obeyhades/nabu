@@ -1,4 +1,4 @@
-import { useStats, todayStr, xpLevelInfo } from "../stores/useStats";
+import { useStats, todayStr, xpLevelInfo, currentStreak } from "../stores/useStats";
 import { ProgressBar } from "./ProgressBar";
 import { LevelRing } from "./LevelRing";
 import { Mascot } from "./Mascot";
@@ -6,7 +6,7 @@ import { Mascot } from "./Mascot";
 /** Nabu-maskoten peppar + visar nivå, streak, XP och dagligt mål (Duolingo-stil). */
 export function MotivationCard() {
   const xp = useStats((s) => s.xp);
-  const streak = useStats((s) => s.streak);
+  const streak = useStats((s) => currentStreak(s.streak, s.lastPlayDate));
   const todayXp = useStats((s) => s.todayXp);
   const todayDate = useStats((s) => s.todayDate);
   const dailyGoal = useStats((s) => s.dailyGoal);

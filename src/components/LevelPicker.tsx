@@ -42,7 +42,8 @@ export function LevelPicker({
   const tapLocked = (lvl: Level) => {
     playWrong();
     setShaking(lvl);
-    speak("Klara nivån innan!");
+    // Texten är svensk – läs den med svensk röst oavsett valt språk
+    speak("Klara nivån innan!", "sv");
     window.setTimeout(() => setShaking(null), 500);
   };
 
