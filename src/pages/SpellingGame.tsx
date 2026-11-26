@@ -1,32 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { conceptsByLevel } from "../data/concepts";
+import { lessonWords, labelOf } from "../data/concepts";
+import { LEVEL_COUNT } from "../data/levels";
 import { getLanguage } from "../data/languages";
 import { useSettings } from "../stores/useSettings";
-import { useProfile } from "../stores/useProfile";
-import { useStats, XP_PER_STAR } from "../stores/useStats";
 import { useSpeech } from "../hooks/useSpeech";
+import { useLesson } from "../hooks/useLesson";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { LevelPicker } from "../components/LevelPicker";
-import { ProgressBar } from "../components/ProgressBar";
-import { BackButton } from "../components/BackButton";
+import { GameHeader } from "../components/GameHeader";
+import { QuestionStage, BigPicture } from "../components/QuestionStage";
+import { Coach } from "../components/Coach";
+import { useCoach } from "../hooks/useCoach";
 import { VictoryScreen } from "../components/VictoryScreen";
 import { Button } from "../components/Button";
 import { celebrate } from "../lib/celebrate";
-import { playWrong, playLevelUp } from "../lib/sfx";
-import { starKey, goldStarKey } from "../lib/progress";
+import { difficulty } from "../lib/difficulty";
 import { shuffle } from "../lib/shuffle";
 import { graphemes, normChar } from "../lib/graphemes";
 import { cn } from "../lib/cn";
-import type { Category, Concept, Level } from "../types";
+import type { Concept, Level, PlayCategory } from "../types";
 
-// Extra vilse-bokstäver i bokstavsbanken per nivå (+2 i guld-läge)
-const EXTRA_BY_LEVEL: Record<Level, number> = { 1: 0, 2: 1, 3: 2, 4: 3 };
 
 export default function SpellingGame() {
   const lang = useSettings((s) => s.lang);
-  const addStars = useProfile((s) => s.addStars);
-  const completeLesson = useStats((s) => s.completeLesson);
   const { speak } = useSpeech();
+  const lesson = useLesson("spelling");
+  const coach = useCoach();
   const inputRef = useRef<HTMLInputElement>(null);
 
   // pekskärm: öppna inte OS-tangentbordet förrän barnet själv trycker i fältet
@@ -36,7 +35,7 @@ export default function SpellingGame() {
   );
   const [kbMode, setKbMode] = useState(false);
 
-  const [category, setCategory] = useState<Category | null>(null);
+  const [category, setCategory] = useState<PlayCategory | null>(null);
   const [level, setLevel] = useState<Level | null>(null);
   const [gold, setGold] = useState(false);
   const [concepts, setConcepts] = useState<Concept[]>([]);
@@ -44,29 +43,27 @@ export default function SpellingGame() {
   const [bank, setBank] = useState<string[]>([]);
   const [accepted, setAccepted] = useState<string[]>([]); // godkända grafem hittills
   const [wrong, setWrong] = useState(false);
-  const [mistakes, setMistakes] = useState(0);
   const [locked, setLocked] = useState(false);
-  const [done, setDone] = useState(false);
 
   const current = concepts[index];
-  const word = (current ? current.labels[lang] ?? current.labels.sv ?? "" : "").replace(/\s+/g, "");
+  const word = (current ? labelOf(current, lang) : "").replace(/\s+/g, "");
   const targetG = useMemo(() => graphemes(word), [word]);
-  const stars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
-  const xp = stars * XP_PER_STAR * (gold ? 2 : 1);
+  const d = level ? difficulty(level, gold) : null;
 
   // Nytt ord: ny bokstavsbank, töm svar, ev. ledtråd
   useEffect(() => {
-    if (!current || !level) return;
-    const extra = EXTRA_BY_LEVEL[level] + (gold ? 2 : 0);
+    if (!current || !level || !d) return;
+    // Extra vilse-bokstäver: 0 på nivå 1 → 4 på nivå 20 (+2 i guld)
+    const extra = Math.round(d.t * 4) + (gold ? 2 : 0);
     const pool = concepts
       .filter((c) => c.id !== current.id)
-      .flatMap((c) => graphemes((c.labels[lang] ?? c.labels.sv ?? "").replace(/\s+/g, "")));
+      .flatMap((c) => graphemes(labelOf(c, lang).replace(/\s+/g, "")));
     const distractors = shuffle(pool).slice(0, extra);
     setBank(shuffle([...targetG, ...distractors]));
     setAccepted([]);
     setWrong(false);
     setLocked(false);
-    if (level <= 2 && !gold) speak(word, lang, current.id); // ledtråd på lägre nivåer
+    if (d.help !== "none") speak(word, lang, current.id); // ledtråd utom på mästarnivåerna
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, lang, level, gold]);
 
@@ -74,14 +71,11 @@ export default function SpellingGame() {
     if (!category || !level || !current) return;
     setLocked(true);
     speak(word, lang, current.id);
+    coach.cheer(lesson.correct());
     celebrate();
     window.setTimeout(() => {
       if (index === concepts.length - 1) {
-        const finalStars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
-        addStars(gold ? goldStarKey("spelling", category, level) : starKey("spelling", category, level), finalStars);
-        completeLesson(finalStars * XP_PER_STAR * (gold ? 2 : 1));
-        playLevelUp();
-        setDone(true);
+        lesson.finish(category, level, gold, concepts.length);
       } else {
         setIndex((n) => n + 1);
       }
@@ -90,8 +84,8 @@ export default function SpellingGame() {
 
   const reject = () => {
     setWrong(true);
-    playWrong();
-    setMistakes((m) => m + 1);
+    lesson.wrong();
+    coach.comfort();
     window.setTimeout(() => setWrong(false), 500);
   };
 
@@ -119,17 +113,16 @@ export default function SpellingGame() {
     if (!category) return;
     setLevel(lvl);
     setGold(isGold);
-    setConcepts(shuffle(conceptsByLevel(category, lvl)));
+    setConcepts(lessonWords(category, lvl, Math.min(7, difficulty(lvl, isGold).rounds)));
     setIndex(0);
-    setMistakes(0);
-    setDone(false);
+    lesson.reset();
   };
 
   // 1) Välj kategori
-  if (!category) return <CategoryPicker title="Stava ordet" onPick={setCategory} />;
+  if (!category) return <CategoryPicker game="spelling" title="Stava ordet" onPick={setCategory} />;
 
   // 2) Välj nivå
-  if (!level)
+  if (!level || !d)
     return (
       <LevelPicker
         game="spelling"
@@ -141,30 +134,36 @@ export default function SpellingGame() {
     );
 
   // 3) Klar
-  if (done) {
+  if (lesson.done && lesson.result) {
     return (
       <VictoryScreen
-        stars={stars}
-        xp={xp}
-        detail={mistakes === 0 ? "Helt rätt!" : `${mistakes} fel`}
+        stars={lesson.result.stars}
+        xp={lesson.result.xp}
+        detail={lesson.mistakes === 0 ? "Helt rätt!" : `${lesson.mistakes} fel`}
         gold={gold}
-        onNext={level < 4 && !gold ? () => startLevel((level + 1) as Level) : undefined}
+        bestCombo={lesson.bestCombo}
+        onNext={level < LEVEL_COUNT && !gold ? () => startLevel(level + 1) : undefined}
         onReplay={() => startLevel(level, gold)}
         onChangeLevel={() => setLevel(null)}
       />
     );
   }
 
+  if (!current) return null;
+
   // 4) Spela – skriv på tangentbordet OCH/ELLER tryck på bokstäverna
   return (
     <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
-      <div className="flex items-center gap-3 pt-2">
-        <BackButton onClick={() => setLevel(null)} />
-        <ProgressBar value={(index + 1) / concepts.length} />
-      </div>
+      <GameHeader
+        onBack={() => setLevel(null)}
+        progress={index / concepts.length}
+        level={level}
+        gold={gold}
+        combo={lesson.combo}
+      />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-8">
-        <div className="text-8xl">{current.emoji}</div>
+      <QuestionStage qkey={index}>
+        <BigPicture>{current.emoji}</BigPicture>
 
         <input
           ref={inputRef}
@@ -235,7 +234,8 @@ export default function SpellingGame() {
             {index + 1} / {concepts.length}
           </span>
         </div>
-      </div>
+      </QuestionStage>
+      <Coach event={coach.event} />
     </main>
   );
 }

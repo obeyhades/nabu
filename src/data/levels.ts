@@ -1,46 +1,50 @@
-import type { Level } from "../types";
+import type { Band, Level } from "../types";
 
-export type LevelInfo = {
-  level: Level;
+/** Antal nivåer på varje stig och hur många nivåer som ryms i ett band. */
+export const LEVEL_COUNT = 20;
+export const LEVELS_PER_BAND = 5;
+
+export type BandInfo = {
+  band: Band;
   name: string; // svårighetsgrad, t.ex. "Nybörjare"
-  title: string; // roligt namn på nivån
-  icon: string; // rolig emoji
-  desc: string; // kort beskrivning
+  title: string; // roligt namn på bandet
+  icon: string;
+  desc: string;
   gradient: string; // tailwind-gradient
   border: string; // matchande kantfärg
 };
 
-/** De fyra svårighetsgraderna – nu som roliga, namngivna nivåer (som Nadira). */
-export const LEVELS: LevelInfo[] = [
+/** De fyra svårighetsbanden – varje band är fem nivåer på stigen. */
+export const BANDS: BandInfo[] = [
   {
-    level: 1,
+    band: 1,
     name: "Nybörjare",
     title: "Första stegen",
     icon: "🌱",
-    desc: "Lätta ord",
+    desc: "Lätta ord och full hjälp",
     gradient: "from-emerald-400 to-green-500",
     border: "border-emerald-400",
   },
   {
-    level: 2,
+    band: 2,
     name: "Mellannivå",
     title: "På äventyr",
     icon: "🚀",
-    desc: "Medellånga ord",
+    desc: "Fler ord, lite mindre hjälp",
     gradient: "from-amber-400 to-yellow-500",
     border: "border-amber-400",
   },
   {
-    level: 3,
+    band: 3,
     name: "Utmanare",
     title: "Utmaningen",
     icon: "🔥",
-    desc: "Längre ord",
+    desc: "Längre ord, fler val",
     gradient: "from-orange-400 to-orange-600",
     border: "border-orange-400",
   },
   {
-    level: 4,
+    band: 4,
     name: "Mästare",
     title: "Mästaren",
     icon: "👑",
@@ -50,6 +54,41 @@ export const LEVELS: LevelInfo[] = [
   },
 ];
 
+export type LevelInfo = {
+  level: Level;
+  band: Band;
+  step: number; // 1–5 inom bandet
+  icon: string; // emoji på nivåbrickan
+};
+
+// En egen ikon per nivå så stigen känns som en resa
+const LEVEL_ICONS = [
+  "🌱", "🐣", "🌼", "🍀", "🌳",
+  "🚲", "⛺", "🧭", "🎈", "🚀",
+  "🏔️", "⚡", "🌋", "🐉", "💎",
+  "🏰", "🌟", "🦄", "🏆", "👑",
+];
+
+export const LEVELS: LevelInfo[] = LEVEL_ICONS.map((icon, i) => ({
+  level: i + 1,
+  band: bandOf(i + 1),
+  step: (i % LEVELS_PER_BAND) + 1,
+  icon,
+}));
+
+export function bandOf(level: Level): Band {
+  return Math.min(4, Math.max(1, Math.ceil(level / LEVELS_PER_BAND))) as Band;
+}
+
+export function getBand(band: Band): BandInfo {
+  return BANDS[band - 1] ?? BANDS[0];
+}
+
 export function getLevel(level: Level): LevelInfo {
-  return LEVELS.find((l) => l.level === level) ?? LEVELS[0];
+  return LEVELS[level - 1] ?? LEVELS[0];
+}
+
+/** Nivåerna i ett band (för gruppering på stigen). */
+export function levelsInBand(band: Band): LevelInfo[] {
+  return LEVELS.filter((l) => l.band === band);
 }

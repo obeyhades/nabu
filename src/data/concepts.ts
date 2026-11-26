@@ -1,4 +1,6 @@
-import type { Concept, Category, Level } from "../types";
+import type { Concept, Category, Level, LangCode, PlayCategory } from "../types";
+import { bandOf } from "./levels";
+import { shuffle } from "../lib/shuffle";
 
 /** `tint` = kategorins färgvärld (barn navigerar per färg före text). */
 export const CATEGORIES: { id: Category; name: string; emoji: string; tint: string }[] = [
@@ -43,6 +45,14 @@ export const CONCEPTS: Concept[] = [
   { id: "hippo", emoji: "🦛", category: "animals", level: 4, labels: { sv: "flodhäst", en: "hippopotamus", el: "ιπποπόταμος", ru: "бегемот", ar: "فَرَسُ النَّهْرِ" } },
   { id: "squirrel", emoji: "🐿️", category: "animals", level: 4, labels: { sv: "ekorre", en: "squirrel", el: "σκίουρος", ru: "белка", ar: "سِنْجَابٌ" } },
   { id: "octopus", emoji: "🐙", category: "animals", level: 4, labels: { sv: "bläckfisk", en: "octopus", el: "χταπόδι", ru: "осьминог", ar: "أَخْطَبُوطٌ" } },
+  { id: "mouse", emoji: "🐭", category: "animals", level: 1, labels: { sv: "mus", en: "mouse", el: "ποντίκι", ru: "мышь", ar: "فَأْر" } },
+  { id: "hen", emoji: "🐔", category: "animals", level: 1, labels: { sv: "höna", en: "hen", el: "κότα", ru: "курица", ar: "دَجَاجَة" } },
+  { id: "tiger", emoji: "🐯", category: "animals", level: 2, labels: { sv: "tiger", en: "tiger", el: "τίγρη", ru: "тигр", ar: "نَمِر" } },
+  { id: "bear", emoji: "🐻", category: "animals", level: 2, labels: { sv: "björn", en: "bear", el: "αρκούδα", ru: "медведь", ar: "دُبّ" } },
+  { id: "zebra", emoji: "🦓", category: "animals", level: 3, labels: { sv: "zebra", en: "zebra", el: "ζέβρα", ru: "зебра", ar: "حِمَار وَحْشِيّ" } },
+  { id: "turtle", emoji: "🐢", category: "animals", level: 3, labels: { sv: "sköldpadda", en: "turtle", el: "χελώνα", ru: "черепаха", ar: "سُلَحْفَاة" } },
+  { id: "owl", emoji: "🦉", category: "animals", level: 4, labels: { sv: "uggla", en: "owl", el: "κουκουβάγια", ru: "сова", ar: "بُومَة" } },
+  { id: "hedgehog", emoji: "🦔", category: "animals", level: 4, labels: { sv: "igelkott", en: "hedgehog", el: "σκαντζόχοιρος", ru: "ёж", ar: "قُنْفُذ" } },
   { id: "snake", emoji: "🐍", category: "animals", level: 4, labels: { sv: "orm", en: "snake", el: "φίδι", ru: "змея", ar: "ثُعْبَان" } },
 
   // ── Mat ──────────────────────────────────────────────
@@ -65,6 +75,10 @@ export const CONCEPTS: Concept[] = [
   { id: "candy", emoji: "🍬", category: "food", level: 4, labels: { sv: "godis", en: "candy", el: "καραμέλα", ru: "конфета", ar: "حَلْوَى" } },
   { id: "donut", emoji: "🍩", category: "food", level: 4, labels: { sv: "munk", en: "donut", el: "ντόνατ", ru: "пончик", ar: "دُونَات" } },
   { id: "cake", emoji: "🍰", category: "food", level: 4, labels: { sv: "tårta", en: "cake", el: "τούρτα", ru: "торт", ar: "كَعْكَة" } },
+  { id: "juice", emoji: "🧃", category: "food", level: 1, labels: { sv: "juice", en: "juice", el: "χυμός", ru: "сок", ar: "عَصِير" } },
+  { id: "butter", emoji: "🧈", category: "food", level: 2, labels: { sv: "smör", en: "butter", el: "βούτυρο", ru: "масло", ar: "زُبْدَة" } },
+  { id: "honey", emoji: "🍯", category: "food", level: 2, labels: { sv: "honung", en: "honey", el: "μέλι", ru: "мёд", ar: "عَسَل" } },
+  { id: "croissant", emoji: "🥐", category: "food", level: 3, labels: { sv: "croissant", en: "croissant", el: "κρουασάν", ru: "круассан", ar: "كْرُوَاسَان" } },
   { id: "soup", emoji: "🍲", category: "food", level: 4, labels: { sv: "soppa", en: "soup", el: "σούπα", ru: "суп", ar: "شُورْبَة" } },
 
   // ── Frukt ────────────────────────────────────────────
@@ -82,6 +96,7 @@ export const CONCEPTS: Concept[] = [
   { id: "melon", emoji: "🍈", category: "fruit", level: 3, labels: { sv: "melon", en: "melon", el: "πεπόνι", ru: "дыня", ar: "شَمَّام" } },
   { id: "mango", emoji: "🥭", category: "fruit", level: 3, labels: { sv: "mango", en: "mango", el: "μάνγκο", ru: "манго", ar: "مَانْجُو" } },
   { id: "blueberry", emoji: "🫐", category: "fruit", level: 3, labels: { sv: "blåbär", en: "blueberry", el: "μύρτιλο", ru: "черника", ar: "تُوت أَزْرَق" } },
+  { id: "olive", emoji: "🫒", category: "fruit", level: 3, labels: { sv: "oliv", en: "olive", el: "ελιά", ru: "оливка", ar: "زَيْتُون" } },
   { id: "pineapple", emoji: "🍍", category: "fruit", level: 4, labels: { sv: "ananas", en: "pineapple", el: "ανανάς", ru: "ананас", ar: "أَنَانَاسٌ" } },
   { id: "coconut", emoji: "🥥", category: "fruit", level: 4, labels: { sv: "kokosnöt", en: "coconut", el: "καρύδα", ru: "кокос", ar: "جَوْز الْهِنْد" } },
   { id: "avocado", emoji: "🥑", category: "fruit", level: 4, labels: { sv: "avokado", en: "avocado", el: "αβοκάντο", ru: "авокадо", ar: "أَفُوكَادُو" } },
@@ -99,8 +114,11 @@ export const CONCEPTS: Concept[] = [
   { id: "cucumber", emoji: "🥒", category: "vegetables", level: 3, labels: { sv: "gurka", en: "cucumber", el: "αγγούρι", ru: "огурец", ar: "خِيَارٌ" } },
   { id: "garlic", emoji: "🧄", category: "vegetables", level: 3, labels: { sv: "vitlök", en: "garlic", el: "σκόρδο", ru: "чеснок", ar: "ثُوم" } },
   { id: "eggplant", emoji: "🍆", category: "vegetables", level: 3, labels: { sv: "aubergine", en: "eggplant", el: "μελιτζάνα", ru: "баклажан", ar: "بَاذِنْجَان" } },
+  { id: "beans", emoji: "🫘", category: "vegetables", level: 3, labels: { sv: "bönor", en: "beans", el: "φασόλια", ru: "фасоль", ar: "فَاصُولْيَاء" } },
   { id: "mushroom", emoji: "🍄", category: "vegetables", level: 4, labels: { sv: "svamp", en: "mushroom", el: "μανιτάρι", ru: "гриб", ar: "فِطْرٌ" } },
   { id: "peas", emoji: "🫛", category: "vegetables", level: 4, labels: { sv: "ärtor", en: "peas", el: "αρακάς", ru: "горох", ar: "بَازِلَّاء" } },
+  { id: "sweetpotato", emoji: "🍠", category: "vegetables", level: 4, labels: { sv: "sötpotatis", en: "sweet potato", el: "γλυκοπατάτα", ru: "батат", ar: "بَطَاطَا حُلْوَة" } },
+  { id: "ginger", emoji: "🫚", category: "vegetables", level: 4, labels: { sv: "ingefära", en: "ginger", el: "τζίντζερ", ru: "имбирь", ar: "زَنْجَبِيل" } },
   { id: "chili", emoji: "🌶️", category: "vegetables", level: 4, labels: { sv: "chili", en: "chili pepper", el: "τσίλι", ru: "перец чили", ar: "فُلْفُل حَارّ" } },
 
   // ── Fordon ───────────────────────────────────────────
@@ -166,18 +184,73 @@ export const CONCEPTS: Concept[] = [
   { id: "twenty", emoji: "20", category: "numbers", level: 4, labels: { sv: "tjugo", en: "twenty", el: "είκοσι", ru: "двадцать", ar: "عِشْرُونَ" } },
 ];
 
-const REAL_CATEGORIES = CATEGORIES.filter((c) => c.id !== "blandad").map((c) => c.id);
+export const REAL_CATEGORIES = CATEGORIES.filter((c) => c.id !== "blandad").map((c) => c.id);
+
+/** Äventyrsstigen går genom kategorierna i tur och ordning, en per nivå. */
+export const ADVENTURE = {
+  id: "adventure" as const,
+  name: "Äventyret",
+  emoji: "🗺️",
+  tint: "bg-purple-100 border-purple-300 dark:bg-purple-900/40 dark:border-purple-700",
+};
+
+export function adventureCategory(level: Level): Category {
+  return REAL_CATEGORIES[(level - 1) % REAL_CATEGORIES.length];
+}
+
+/** Den kategori orden faktiskt hämtas från (äventyr → kategori för nivån). */
+export function resolveCategory(cat: PlayCategory, level: Level): Category {
+  return cat === "adventure" ? adventureCategory(level) : cat;
+}
+
+/** Namn/emoji/färg för en kategori eller äventyret. */
+export function categoryInfo(cat: string) {
+  if (cat === "adventure") return ADVENTURE;
+  return CATEGORIES.find((c) => c.id === cat);
+}
 
 export function conceptsByCategory(category: Category): Concept[] {
+  if (category === "blandad") return CONCEPTS;
   return CONCEPTS.filter((c) => c.category === category);
 }
 
-export function conceptsByLevel(category: Category, level: Level): Concept[] {
-  if (category === "blandad") {
-    // Ett ord från varje kategori på den nivån (deterministiskt → stabilt i spelet)
-    return REAL_CATEGORIES.map((cat) =>
-      CONCEPTS.find((c) => c.category === cat && c.level === level)
-    ).filter((c): c is Concept => Boolean(c));
-  }
-  return CONCEPTS.filter((c) => c.category === category && c.level === level);
+/**
+ * Ord för en lektion på en viss nivå. Bandet (1–4) styr vilka ord som är med:
+ * först ord från nivåns eget band, sen fylls det på med lättare ord – så
+ * även små kategorier räcker till 10 uppgifter. Svårare band kommer inte med.
+ */
+export function lessonWords(cat: PlayCategory, level: Level, count: number): Concept[] {
+  const band = bandOf(level);
+  const category = resolveCategory(cat, level);
+  const pool = conceptsByCategory(category).filter((c) => c.level <= band);
+  const current = shuffle(pool.filter((c) => c.level === band));
+  const easier = shuffle(pool.filter((c) => c.level < band)).sort((a, b) => b.level - a.level);
+  return [...current, ...easier].slice(0, count);
+}
+
+/** Alla ord som kan användas som fel-alternativ (samma kategori, upp till bandet). */
+export function distractorPool(cat: PlayCategory, level: Level): Concept[] {
+  const category = resolveCategory(cat, level);
+  const band = bandOf(level);
+  const pool = conceptsByCategory(category).filter((c) => c.level <= band);
+  return pool.length >= 8 ? pool : conceptsByCategory(category);
+}
+
+/**
+ * Välj `n` fel-alternativ till `answer`. Högre `closeness` (0–1) = fler
+ * alternativ från samma band, dvs. mer lika varandra.
+ */
+export function pickDistractors(answer: Concept, pool: Concept[], n: number, closeness = 0): Concept[] {
+  const others = pool.filter((c) => c.id !== answer.id && c.emoji !== answer.emoji);
+  const near = shuffle(others.filter((c) => c.level === answer.level));
+  const far = shuffle(others.filter((c) => c.level !== answer.level));
+  const nearCount = Math.round(n * closeness);
+  const picked = [...near.slice(0, nearCount), ...far];
+  const rest = near.slice(nearCount);
+  return shuffle([...picked, ...rest].slice(0, n));
+}
+
+/** Ordet på valt språk (svenska som reserv). */
+export function labelOf(c: Concept, lang: LangCode): string {
+  return c.labels[lang] ?? c.labels.sv ?? "";
 }

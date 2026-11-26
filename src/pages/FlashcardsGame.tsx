@@ -1,35 +1,39 @@
 import { useEffect, useState } from "react";
-import { CONCEPTS, conceptsByCategory, conceptsByLevel } from "../data/concepts";
+import { lessonWords, distractorPool, pickDistractors, labelOf } from "../data/concepts";
 import { getLanguage } from "../data/languages";
+import { LEVEL_COUNT } from "../data/levels";
 import { useSettings } from "../stores/useSettings";
-import { useProfile } from "../stores/useProfile";
-import { useStats, XP_PER_STAR } from "../stores/useStats";
 import { useSpeech } from "../hooks/useSpeech";
+import { useLesson } from "../hooks/useLesson";
 import { SpeakableText } from "../components/SpeakableText";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { LevelPicker } from "../components/LevelPicker";
-import { ProgressBar } from "../components/ProgressBar";
-import { BackButton } from "../components/BackButton";
+import { GameHeader } from "../components/GameHeader";
+import { QuestionStage, BigPicture } from "../components/QuestionStage";
+import { ChoiceButton } from "../components/ChoiceButton";
+import { choiceState } from "../lib/choice";
+import { Coach } from "../components/Coach";
+import { useCoach } from "../hooks/useCoach";
 import { VictoryScreen } from "../components/VictoryScreen";
 import { Button } from "../components/Button";
-import { celebrate } from "../lib/celebrate";
-import { playCorrect, playWrong, playLevelUp } from "../lib/sfx";
-import { starKey, goldStarKey } from "../lib/progress";
+import { difficulty } from "../lib/difficulty";
 import { shuffle } from "../lib/shuffle";
 import { cn } from "../lib/cn";
-import type { Category, Concept, Level } from "../types";
-
-const QUIZ_ROUNDS = 3;
+import type { Concept, Level, PlayCategory } from "../types";
 
 type QuizQ = { concept: Concept; options: Concept[] };
 
+/**
+ * Ord & bilder: bläddra bland orden (lär), sen ett quiz "vilken bild är …".
+ * Högre nivåer: fler ord, längre quiz, fler och mer lika bilder, mindre hjälp.
+ */
 export default function FlashcardsGame() {
   const lang = useSettings((s) => s.lang);
-  const addStars = useProfile((s) => s.addStars);
-  const completeLesson = useStats((s) => s.completeLesson);
   const { speak } = useSpeech();
+  const lesson = useLesson("flashcards");
+  const coach = useCoach();
 
-  const [category, setCategory] = useState<Category | null>(null);
+  const [category, setCategory] = useState<PlayCategory | null>(null);
   const [level, setLevel] = useState<Level | null>(null);
   const [gold, setGold] = useState(false);
   const [concepts, setConcepts] = useState<Concept[]>([]);
@@ -38,55 +42,52 @@ export default function FlashcardsGame() {
   const [quiz, setQuiz] = useState<QuizQ[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
-  const [mistakes, setMistakes] = useState(0);
-  const [done, setDone] = useState(false);
 
+  const d = level ? difficulty(level, gold) : null;
   const current = concepts[index];
-  const label = current ? current.labels[lang] ?? current.labels.sv ?? "" : "";
-  const autoRead = level !== null && level <= 2 && !gold; // mindre hjälp högre upp/guld
-  const stars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
-  const xp = stars * XP_PER_STAR * (gold ? 2 : 1);
+  const label = current ? labelOf(current, lang) : "";
 
-  // Läs upp automatiskt när kortet byts (bara lägre nivåer, ej guld)
+  // Läs upp automatiskt när kortet byts (inte på mästarnivåerna)
   useEffect(() => {
-    if (phase === "browse" && current && autoRead) speak(label, lang, current.id);
+    if (phase === "browse" && current && d && d.help !== "none") speak(label, lang, current.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, lang, phase]);
+  }, [current?.id, index, lang, phase]);
 
   const startLevel = (lvl: Level, isGold = false) => {
     if (!category) return;
+    const dd = difficulty(lvl, isGold);
+    // Antal ord att lära: 4 → 8
+    setConcepts(lessonWords(category, lvl, Math.min(8, 3 + dd.band + (dd.step > 3 ? 1 : 0))));
     setLevel(lvl);
     setGold(isGold);
-    setConcepts(shuffle(conceptsByLevel(category, lvl)));
     setPhase("browse");
     setIndex(0);
     setQIndex(0);
-    setMistakes(0);
     setPicked(null);
-    setDone(false);
+    lesson.reset();
   };
 
-  // Bygg quizet: "Vilken bild?" – hör/läs ordet, välj rätt emoji
+  // Quiz: varje inlärt ord frågas (minst 3, fler på högre nivåer)
   const startQuiz = () => {
-    if (!category) return;
-    const pool = category === "blandad" ? CONCEPTS : conceptsByCategory(category);
-    const questions = shuffle(concepts)
-      .slice(0, QUIZ_ROUNDS)
-      .map((c) => {
-        const distractors = shuffle(pool.filter((p) => p.id !== c.id)).slice(0, gold ? 3 : 2);
-        return { concept: c, options: shuffle([c, ...distractors]) };
-      });
-    setQuiz(questions);
+    if (!category || !level || !d) return;
+    const pool = distractorPool(category, level);
+    const asked = shuffle(concepts);
+    const extra = shuffle(concepts).slice(0, Math.max(0, Math.min(d.rounds, 8) - asked.length));
+    setQuiz(
+      [...asked, ...extra].map((c) => ({
+        concept: c,
+        options: shuffle([c, ...pickDistractors(c, pool, d.options - 1, d.t)]),
+      }))
+    );
     setQIndex(0);
-    setMistakes(0);
     setPicked(null);
+    lesson.reset();
     setPhase("quiz");
   };
 
   const q = quiz[qIndex];
-  const qLabel = q ? q.concept.labels[lang] ?? q.concept.labels.sv ?? "" : "";
+  const qLabel = q ? labelOf(q.concept, lang) : "";
 
-  // Läs upp quiz-frågans ord
   useEffect(() => {
     if (phase === "quiz" && q) speak(qLabel, lang, q.concept.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,32 +97,24 @@ export default function FlashcardsGame() {
     if (picked !== null || !q || !category || !level) return;
     setPicked(opt.id);
     if (opt.id === q.concept.id) {
-      playCorrect();
+      coach.cheer(lesson.correct());
       window.setTimeout(() => {
-        if (qIndex === quiz.length - 1) {
-          const finalStars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
-          addStars(gold ? goldStarKey("flashcards", category, level) : starKey("flashcards", category, level), finalStars);
-          completeLesson(finalStars * XP_PER_STAR * (gold ? 2 : 1));
-          celebrate();
-          playLevelUp();
-          setDone(true);
-        } else {
+        if (qIndex === quiz.length - 1) lesson.finish(category, level, gold, quiz.length);
+        else {
           setQIndex((n) => n + 1);
           setPicked(null);
         }
-      }, 650);
+      }, 700);
     } else {
-      playWrong();
-      setMistakes((m) => m + 1);
+      lesson.wrong();
+      coach.comfort();
       window.setTimeout(() => setPicked(null), 800);
     }
   };
 
-  // 1) Välj kategori
-  if (!category) return <CategoryPicker title="Ord & bilder" onPick={setCategory} />;
+  if (!category) return <CategoryPicker game="flashcards" title="Ord & bilder" onPick={setCategory} />;
 
-  // 2) Välj nivå
-  if (!level)
+  if (!level || !d)
     return (
       <LevelPicker
         game="flashcards"
@@ -132,78 +125,78 @@ export default function FlashcardsGame() {
       />
     );
 
-  // 3) Klar
-  if (done) {
+  if (lesson.done && lesson.result) {
     return (
       <VictoryScreen
-        stars={stars}
-        xp={xp}
-        detail={mistakes === 0 ? "Helt rätt!" : `${mistakes} fel`}
+        stars={lesson.result.stars}
+        xp={lesson.result.xp}
+        detail={lesson.mistakes === 0 ? "Helt rätt!" : `${lesson.mistakes} fel`}
         gold={gold}
-        onNext={level < 4 && !gold ? () => startLevel((level + 1) as Level) : undefined}
+        bestCombo={lesson.bestCombo}
+        onNext={level < LEVEL_COUNT && !gold ? () => startLevel(level + 1) : undefined}
         onReplay={() => startLevel(level, gold)}
         onChangeLevel={() => setLevel(null)}
       />
     );
   }
 
-  // 4a) Quiz: vilken bild?
+  // Quiz: vilken bild?
   if (phase === "quiz" && q) {
     return (
       <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
-        <div className="flex items-center gap-3 pt-2">
-          <BackButton onClick={() => setLevel(null)} />
-          <ProgressBar value={(qIndex + 1) / quiz.length} />
-        </div>
-
-        <div className="flex flex-1 flex-col items-center justify-center gap-6">
+        <GameHeader
+          onBack={() => setLevel(null)}
+          progress={qIndex / quiz.length}
+          level={level}
+          gold={gold}
+          combo={lesson.combo}
+        />
+        <QuestionStage qkey={`q${qIndex}`}>
           <p className="font-semibold text-zinc-600 dark:text-zinc-300">Vilken bild är …</p>
-          <SpeakableText
-            text={qLabel}
-            conceptId={q.concept.id}
-            className="text-4xl font-bold text-purple-600 dark:text-purple-300"
-          />
-          <div className={cn("grid w-full gap-3", gold ? "grid-cols-2" : "grid-cols-3")}>
-            {q.options.map((opt) => (
-              <button
+          {d.help === "none" ? (
+            <SpeakableText
+              text="🔊"
+              conceptId={q.concept.id}
+              className="rounded-full bg-white px-5 py-3 text-3xl shadow dark:bg-zinc-800"
+            />
+          ) : (
+            <SpeakableText
+              text={qLabel}
+              conceptId={q.concept.id}
+              className="text-4xl font-bold text-purple-600 dark:text-purple-300"
+            />
+          )}
+          <div className={cn("grid w-full gap-3", q.options.length <= 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3")}>
+            {q.options.map((opt, i) => (
+              <ChoiceButton
                 key={opt.id}
+                index={i}
+                state={choiceState(opt.id, picked, q.concept.id)}
                 onClick={() => answer(opt)}
-                disabled={picked !== null}
-                className={cn(
-                  "flex aspect-square items-center justify-center rounded-3xl text-6xl shadow transition active:scale-95",
-                  picked === null && "bg-white hover:-translate-y-0.5 dark:bg-zinc-800",
-                  picked !== null && opt.id === q.concept.id && "bg-emerald-500",
-                  picked !== null && opt.id !== q.concept.id && opt.id === picked && "bg-red-400",
-                  picked !== null &&
-                    opt.id !== q.concept.id &&
-                    opt.id !== picked &&
-                    "bg-white opacity-40 dark:bg-zinc-800"
-                )}
+                className="aspect-square text-6xl"
               >
                 {opt.emoji}
-              </button>
+              </ChoiceButton>
             ))}
           </div>
           <span dir="ltr" className="font-semibold text-zinc-500 dark:text-zinc-400">
             {qIndex + 1} / {quiz.length}
           </span>
-        </div>
+        </QuestionStage>
+        <Coach event={coach.event} />
       </main>
     );
   }
 
-  // 4b) Bläddra & lär
+  // Bläddra & lär
   const isLast = index === concepts.length - 1;
   return (
     <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
-      <div className="flex items-center gap-3 pt-2">
-        <BackButton onClick={() => setLevel(null)} />
-        <ProgressBar value={(index + 1) / concepts.length} />
-      </div>
+      <GameHeader onBack={() => setLevel(null)} progress={(index + 1) / concepts.length / 2} level={level} gold={gold} />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-8">
+      <QuestionStage qkey={`b${index}`}>
         <div className="w-full rounded-3xl bg-white p-10 text-center shadow-xl dark:bg-zinc-800">
-          <div className="text-8xl">{current.emoji}</div>
+          <BigPicture>{current.emoji}</BigPicture>
           <SpeakableText
             text={label}
             conceptId={current.id}
@@ -217,7 +210,7 @@ export default function FlashcardsGame() {
             onClick={() => setIndex((i) => i - 1)}
             className="bg-white text-purple-600 dark:bg-zinc-800 dark:text-purple-300"
           >
-            ←
+            <span className="inline-block rtl:rotate-180">←</span>
           </Button>
           <span dir="ltr" className="font-semibold text-zinc-500 dark:text-zinc-400">
             {index + 1} / {concepts.length}
@@ -228,11 +221,11 @@ export default function FlashcardsGame() {
             </Button>
           ) : (
             <Button onClick={() => setIndex((i) => i + 1)} className="bg-purple-500 text-white">
-              Nästa →
+              Nästa <span className="inline-block rtl:rotate-180">→</span>
             </Button>
           )}
         </div>
-      </div>
+      </QuestionStage>
     </main>
   );
 }

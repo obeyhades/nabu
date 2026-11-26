@@ -1,19 +1,20 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Lock } from "lucide-react";
-import { LEVELS } from "../data/levels";
-import { CATEGORIES } from "../data/concepts";
-import { StarRating } from "./StarRating";
+import { BANDS, LEVEL_COUNT, levelsInBand } from "../data/levels";
+import { categoryInfo } from "../data/concepts";
 import { BackButton } from "./BackButton";
 import { useProfile } from "../stores/useProfile";
 import { useSpeech } from "../hooks/useSpeech";
 import { playWrong } from "../lib/sfx";
-import { isLevelUnlocked, levelStars, goldLevelStars } from "../lib/progress";
+import { isLevelUnlocked, levelStars, goldLevelStars, nextLevel } from "../lib/progress";
 import { cn } from "../lib/cn";
 import type { GameId, Level } from "../types";
 
 /**
- * Steg 2: en rolig "stig" av namngivna nivåer. Låsta öppnas i tur och ordning
- * (låsta kort skakar + förklarar om man trycker). 3 stjärnor låser upp guld-läget.
+ * Nivåstigen: 20 nivåer i fyra band (Nybörjare → Mästare). Nivåerna låses
+ * upp i tur och ordning, nästa nivå att spela studsar, låsta skakar när man
+ * trycker. 3 stjärnor ger ett guld-omspel av nivån.
  */
 export function LevelPicker({
   game,
@@ -24,8 +25,8 @@ export function LevelPicker({
   onBack,
 }: {
   game: GameId;
-  category: string; // Category-id för vanliga spel, "all" för matte/räkna
-  subtitle?: string; // visas istället för kategorinamn (t.ex. "Matte")
+  category: string; // kategori-id, "adventure" eller "all" för spel utan kategori
+  subtitle?: string;
   onPick: (level: Level) => void;
   onPickGold?: (level: Level) => void;
   onBack: () => void;
@@ -34,132 +35,141 @@ export function LevelPicker({
   const { speak } = useSpeech();
   const [shaking, setShaking] = useState<Level | null>(null);
 
-  const cat = CATEGORIES.find((c) => c.id === category);
+  const cat = categoryInfo(category);
   const heading = subtitle ?? cat?.name ?? "";
   const headEmoji = cat?.emoji ?? "🧮";
-  const cleared = LEVELS.filter((l) => levelStars(stars, game, category, l.level) > 0).length;
+  const next = nextLevel(stars, game, category, LEVEL_COUNT);
+  let cleared = 0;
+  let total = 0;
+  for (let l = 1; l <= LEVEL_COUNT; l++) {
+    const s = levelStars(stars, game, category, l);
+    if (s > 0) cleared++;
+    total += s;
+  }
 
   const tapLocked = (lvl: Level) => {
     playWrong();
     setShaking(lvl);
-    speak("Klara nivån innan!");
+    // Texten är svensk – läs den med svensk röst oavsett valt språk
+    speak("Klara nivån innan!", "sv");
     window.setTimeout(() => setShaking(null), 500);
   };
 
   return (
-    <main className="mx-auto max-w-2xl p-6 pb-10">
+    <main className="mx-auto max-w-3xl p-6 pb-12">
       <div className="mb-1 flex items-center gap-3">
         <BackButton onClick={onBack} />
         <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <span className={cn("rounded-xl border-2 px-2 py-1 text-xl", cat?.tint)}>{headEmoji}</span>{" "}
-          {heading}
+          <span className={cn("rounded-xl border-2 px-2 py-1 text-xl", cat?.tint)}>{headEmoji}</span> {heading}
         </h1>
       </div>
       <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
-        {cleared} / {LEVELS.length} nivåer klara · välj en nivå
+        {cleared} / {LEVEL_COUNT} nivåer klara · ⭐ {total} / {LEVEL_COUNT * 3}
       </p>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {LEVELS.map((lvl) => {
-          const unlocked = isLevelUnlocked(stars, game, category, lvl.level);
-          const s = levelStars(stars, game, category, lvl.level);
-          const gold = goldLevelStars(stars, game, category, lvl.level);
-          const goldReady = s >= 3 && Boolean(onPickGold);
-
-          if (!unlocked) {
-            // Låst: visa nivåfärgen "genom dimman" + reagera på tryck
-            return (
-              <button
-                key={lvl.level}
-                onClick={() => tapLocked(lvl.level)}
-                className={cn(
-                  "relative flex flex-col items-center gap-2 rounded-3xl border-2 border-dashed border-zinc-300 bg-white/40 p-4 text-center dark:border-zinc-700 dark:bg-zinc-800/40",
-                  shaking === lvl.level && "animate-shake"
-                )}
-              >
-                <span className="absolute left-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-500 dark:bg-zinc-700 dark:text-zinc-300">
-                  {lvl.level}
-                </span>
-                <div
-                  className={cn(
-                    "flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br text-4xl opacity-40 grayscale",
-                    lvl.gradient
-                  )}
-                >
-                  {lvl.icon}
-                </div>
-                <div>
-                  <div className="font-bold leading-tight text-zinc-400">{lvl.title}</div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                    {lvl.name}
-                  </div>
-                </div>
-                <span className="mt-1 inline-flex items-center gap-1 text-xs text-zinc-400">
-                  <Lock size={14} /> Klara nivån innan
-                </span>
-              </button>
-            );
-          }
-
+      <div className="space-y-7">
+        {BANDS.map((band) => {
+          const bandLevels = levelsInBand(band.band);
+          const bandOpen = isLevelUnlocked(stars, game, category, bandLevels[0].level);
           return (
-            <div
-              key={lvl.level}
-              role="button"
-              tabIndex={0}
-              onClick={() => onPick(lvl.level)}
-              onKeyDown={(e) => e.key === "Enter" && onPick(lvl.level)}
-              className={cn(
-                "relative flex cursor-pointer flex-col items-center gap-2 rounded-3xl border-2 bg-white p-4 text-center shadow-lg transition hover:-translate-y-1 active:scale-95 dark:bg-zinc-800",
-                lvl.border
-              )}
-            >
-              <span className="absolute left-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-500 dark:bg-zinc-700 dark:text-zinc-300">
-                {lvl.level}
-              </span>
-              {gold > 0 && (
-                <span className="absolute right-2 top-2 text-lg" title="Guld klarat!">
-                  🥇
-                </span>
-              )}
-
+            <section key={band.band}>
               <div
                 className={cn(
-                  "flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br text-4xl shadow",
-                  lvl.gradient
+                  "mb-3 flex items-center gap-3 rounded-2xl bg-gradient-to-r px-4 py-2 text-white shadow",
+                  band.gradient,
+                  !bandOpen && "opacity-50 grayscale"
                 )}
               >
-                {lvl.icon}
-              </div>
-
-              <div>
-                <div className="font-bold leading-tight">{lvl.title}</div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  {lvl.name}
+                <span className="text-2xl">{band.icon}</span>
+                <div className="leading-tight">
+                  <div className="font-bold">{band.title}</div>
+                  <div className="text-xs opacity-90">
+                    {band.name} · {band.desc}
+                  </div>
                 </div>
               </div>
 
-              <StarRating value={s} size={16} />
-              <span
-                className={cn(
-                  "mt-1 rounded-full bg-gradient-to-r px-5 py-1.5 text-sm font-bold text-white shadow",
-                  lvl.gradient
-                )}
-              >
-                Spela! ▶
-              </span>
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+                {bandLevels.map((lvl, i) => {
+                  const unlocked = isLevelUnlocked(stars, game, category, lvl.level);
+                  const s = levelStars(stars, game, category, lvl.level);
+                  const gold = goldLevelStars(stars, game, category, lvl.level);
+                  const isNext = lvl.level === next;
 
-              {goldReady && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPickGold?.(lvl.level);
-                  }}
-                  className="rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 px-4 py-1 text-xs font-bold text-white shadow active:scale-95"
-                >
-                  🥇 Guld{gold > 0 ? ` ${"⭐".repeat(gold)}` : "!"}
-                </button>
-              )}
-            </div>
+                  if (!unlocked) {
+                    return (
+                      <button
+                        key={lvl.level}
+                        onClick={() => tapLocked(lvl.level)}
+                        aria-label={`Nivå ${lvl.level}, låst`}
+                        className={cn(
+                          "relative flex aspect-square flex-col items-center justify-center gap-1 rounded-3xl border-2 border-dashed border-zinc-300 bg-white/40 dark:border-zinc-700 dark:bg-zinc-800/40",
+                          shaking === lvl.level && "animate-shake"
+                        )}
+                      >
+                        <span className="text-3xl opacity-30 grayscale">{lvl.icon}</span>
+                        <span className="flex items-center gap-1 text-xs font-bold text-zinc-400">
+                          <Lock size={12} /> {lvl.level}
+                        </span>
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <motion.div
+                      key={lvl.level}
+                      initial={{ opacity: 0, scale: 0.7 }}
+                      animate={isNext ? { opacity: 1, scale: 1, y: [0, -6, 0] } : { opacity: 1, scale: 1 }}
+                      transition={
+                        isNext
+                          ? { y: { repeat: Infinity, duration: 1.2, ease: "easeInOut" }, delay: i * 0.04 }
+                          : { delay: i * 0.04, type: "spring", stiffness: 300, damping: 20 }
+                      }
+                      className="relative"
+                    >
+                      <button
+                        onClick={() => onPick(lvl.level)}
+                        aria-label={`Nivå ${lvl.level}, ${s} stjärnor`}
+                        className={cn(
+                          "flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-3xl border-2 bg-white shadow-lg transition hover:-translate-y-1 active:scale-95 dark:bg-zinc-800",
+                          band.border,
+                          isNext && "ring-4 ring-purple-400/60",
+                          s > 0 && "bg-gradient-to-br text-white " + band.gradient
+                        )}
+                      >
+                        <span className="text-3xl drop-shadow">{lvl.icon}</span>
+                        <span className="text-sm font-black">{lvl.level}</span>
+                        <span className="text-xs leading-none tracking-tighter">
+                          {[1, 2, 3].map((n) => (
+                            <span key={n} className={n <= s ? "" : "opacity-25 grayscale"}>
+                              ⭐
+                            </span>
+                          ))}
+                        </span>
+                        {isNext && (
+                          <span className="absolute -top-2 rounded-full bg-purple-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white shadow">
+                            Spela!
+                          </span>
+                        )}
+                      </button>
+                      {gold > 0 && (
+                        <span className="absolute -right-1 -top-1 text-lg" title="Guld klarat!">
+                          🥇
+                        </span>
+                      )}
+                      {s >= 3 && onPickGold && (
+                        <button
+                          onClick={() => onPickGold(lvl.level)}
+                          className="mt-1 w-full rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 py-0.5 text-[11px] font-bold text-white shadow active:scale-95"
+                        >
+                          🥇 Guld{gold > 0 ? ` ${"⭐".repeat(gold)}` : ""}
+                        </button>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </section>
           );
         })}
       </div>
