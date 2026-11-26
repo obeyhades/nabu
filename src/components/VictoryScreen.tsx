@@ -15,6 +15,7 @@ export function VictoryScreen({
   xp,
   detail,
   gold = false,
+  bestCombo = 0,
   onNext,
   onReplay,
   onChangeLevel,
@@ -24,6 +25,7 @@ export function VictoryScreen({
   xp: number;
   detail?: string; // t.ex. "Helt rätt!" eller "2 fel"
   gold?: boolean;
+  bestCombo?: number; // flest rätt i rad under lektionen
   onNext?: () => void; // visas bara om satt (inte på sista nivån)
   onReplay: () => void;
   onChangeLevel: () => void;
@@ -63,6 +65,7 @@ export function VictoryScreen({
 
       <p className="text-zinc-500 dark:text-zinc-400">
         +{xp} XP{detail ? ` · ${detail}` : ""}
+        {bestCombo >= 3 ? ` · 🔥 ${bestCombo} i rad` : ""}
       </p>
 
       <LevelUpBanner />

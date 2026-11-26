@@ -3,12 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { GAMES } from "../data/gameRegistry";
 import { CATEGORIES } from "../data/concepts";
 import { LEVELS } from "../data/levels";
+import { LANGUAGES } from "../data/languages";
 import { Button } from "../components/Button";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { useSettings } from "../stores/useSettings";
 import { useProfile } from "../stores/useProfile";
 import { useStats, xpLevelInfo, currentStreak } from "../stores/useStats";
-import { starKey } from "../lib/progress";
+import { starKey, pathsFor } from "../lib/progress";
 import { cn } from "../lib/cn";
 
 const RATE_PRESETS = [
@@ -22,7 +23,11 @@ const GOAL_PRESETS = [10, 20, 30, 50];
 function allStarKeys(): string[] {
   const keys: string[] = [];
   for (const g of GAMES) {
-    const cats = g.solo ? ["all"] : CATEGORIES.map((c) => c.id);
+    const cats = pathsFor(
+      g,
+      CATEGORIES.map((c) => c.id),
+      LANGUAGES.map((l) => l.code)
+    );
     for (const cat of cats) for (const lvl of LEVELS) keys.push(starKey(g.id, cat, lvl.level));
   }
   return keys;

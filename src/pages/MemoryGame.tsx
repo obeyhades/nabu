@@ -1,36 +1,45 @@
 import { useEffect, useState } from "react";
-import { conceptsByLevel } from "../data/concepts";
+import { motion } from "framer-motion";
+import { lessonWords, labelOf } from "../data/concepts";
 import { getLanguage } from "../data/languages";
+import { LEVEL_COUNT } from "../data/levels";
 import { useSettings } from "../stores/useSettings";
-import { useProfile } from "../stores/useProfile";
-import { useStats, XP_PER_STAR } from "../stores/useStats";
 import { useSpeech } from "../hooks/useSpeech";
+import { useLesson } from "../hooks/useLesson";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { LevelPicker } from "../components/LevelPicker";
-import { ProgressBar } from "../components/ProgressBar";
 import { BackButton } from "../components/BackButton";
+import { GameHeader } from "../components/GameHeader";
+import { Coach } from "../components/Coach";
+import { useCoach } from "../hooks/useCoach";
 import { VictoryScreen } from "../components/VictoryScreen";
-import { celebrate } from "../lib/celebrate";
-import { playLevelUp } from "../lib/sfx";
-import { starKey, goldStarKey } from "../lib/progress";
+import { difficulty } from "../lib/difficulty";
+import { playPop } from "../lib/sfx";
 import { shuffle } from "../lib/shuffle";
 import { cn } from "../lib/cn";
-import type { Category, Level } from "../types";
+import type { Level, PlayCategory } from "../types";
 
 type Mode = "word" | "picture";
 type Card = { key: string; conceptId: string; kind: "emoji" | "word"; content: string; word: string };
 
-// Önskat antal par per nivå (begränsas av hur många ord nivån har)
-const PAIRS_BY_LEVEL: Record<Level, number> = { 1: 3, 2: 4, 3: 5, 4: 5 };
+/** Antal par: 3 på nivå 1 → 9 på nivå 20 (+1 i guld). */
+function pairsFor(level: Level, gold: boolean): number {
+  return Math.min(10, 3 + Math.floor((level - 1) / 3) + (gold ? 1 : 0));
+}
 
+/**
+ * Para ihop (memory). Korten vänds med 3D-animation. Fler par och kortare
+ * titt-tid högre upp. Bara "onödiga" missar räknas som fel – lite letande
+ * hör till memory.
+ */
 export default function MemoryGame() {
   const lang = useSettings((s) => s.lang);
-  const addStars = useProfile((s) => s.addStars);
-  const completeLesson = useStats((s) => s.completeLesson);
   const { speak } = useSpeech();
+  const lesson = useLesson("memory");
+  const coach = useCoach();
 
   const [mode, setMode] = useState<Mode | null>(null);
-  const [category, setCategory] = useState<Category | null>(null);
+  const [category, setCategory] = useState<PlayCategory | null>(null);
   const [level, setLevel] = useState<Level | null>(null);
   const [gold, setGold] = useState(false);
   const [cards, setCards] = useState<Card[]>([]);
@@ -39,58 +48,42 @@ export default function MemoryGame() {
   const [moves, setMoves] = useState(0);
   const [lock, setLock] = useState(false);
 
-  // Härlett från faktiska korten (nivåer kan ha färre ord än önskat antal par)
   const pairs = cards.length / 2;
   const won = pairs > 0 && matched.size === pairs;
-  const stars = gold
-    ? moves <= pairs + 2
-      ? 3
-      : moves <= pairs + 5
-        ? 2
-        : 1
-    : moves <= pairs + 4
-      ? 3
-      : moves <= pairs * 2
-        ? 2
-        : 1;
-  const xp = stars * XP_PER_STAR * (gold ? 2 : 1);
+  const d = level ? difficulty(level, gold) : null;
+  // Hur många missar som är "gratis" – krymper när nivån stiger
+  const allowance = d ? Math.round(pairs * (1.3 - 0.7 * d.t)) : 0;
 
   useEffect(() => {
     if (won && category && level) {
-      addStars(gold ? goldStarKey("memory", category, level) : starKey("memory", category, level), stars);
-      completeLesson(xp);
-      celebrate();
-      playLevelUp();
+      window.setTimeout(() => lesson.finish(category, level, gold, pairs), 500);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [won]);
 
-  const start = (cat: Category, lvl: Level, m: Mode) => {
-    const chosen = shuffle(conceptsByLevel(cat, lvl)).slice(0, PAIRS_BY_LEVEL[lvl]);
+  const start = (cat: PlayCategory, lvl: Level, m: Mode, isGold: boolean) => {
+    const chosen = lessonWords(cat, lvl, pairsFor(lvl, isGold));
     const deck: Card[] = chosen.flatMap((c) => {
-      const word = c.labels[lang] ?? c.labels.sv ?? "";
-      if (m === "picture") {
-        return [
-          { key: `${c.id}-a`, conceptId: c.id, kind: "emoji" as const, content: c.emoji, word },
-          { key: `${c.id}-b`, conceptId: c.id, kind: "emoji" as const, content: c.emoji, word },
-        ];
-      }
-      return [
-        { key: `${c.id}-e`, conceptId: c.id, kind: "emoji" as const, content: c.emoji, word },
-        { key: `${c.id}-w`, conceptId: c.id, kind: "word" as const, content: word, word },
-      ];
+      const word = labelOf(c, lang);
+      const a = { key: `${c.id}-a`, conceptId: c.id, kind: "emoji" as const, content: c.emoji, word };
+      const b =
+        m === "picture"
+          ? { key: `${c.id}-b`, conceptId: c.id, kind: "emoji" as const, content: c.emoji, word }
+          : { key: `${c.id}-w`, conceptId: c.id, kind: "word" as const, content: word, word };
+      return [a, b];
     });
     setCards(shuffle(deck));
     setFlipped([]);
     setMatched(new Set());
     setMoves(0);
     setLock(false);
+    lesson.reset();
   };
 
   const pickLevel = (lvl: Level, isGold = false) => {
     setLevel(lvl);
     setGold(isGold);
-    if (category && mode) start(category, lvl, mode);
+    if (category && mode) start(category, lvl, mode, isGold);
   };
 
   const backToLevels = () => {
@@ -101,22 +94,27 @@ export default function MemoryGame() {
   };
 
   const onFlip = (i: number) => {
-    if (lock || flipped.includes(i) || matched.has(cards[i].conceptId)) return;
+    if (lock || flipped.includes(i) || matched.has(cards[i].conceptId) || !d) return;
     const next = [...flipped, i];
     setFlipped(next);
     if (next.length === 2) {
-      setMoves((m) => m + 1);
+      const nextMoves = moves + 1;
+      setMoves(nextMoves);
       const [a, b] = next;
       if (cards[a].conceptId === cards[b].conceptId) {
         speak(cards[a].word, lang, cards[a].conceptId);
+        playPop();
+        coach.cheer(lesson.correct(true));
         setMatched((prev) => new Set(prev).add(cards[a].conceptId));
         setFlipped([]);
       } else {
+        // Missar utöver "gratis-kvoten" räknas som fel
+        if (nextMoves - matched.size > allowance) lesson.wrong(true);
         setLock(true);
-        setTimeout(() => {
+        window.setTimeout(() => {
           setFlipped([]);
           setLock(false);
-        }, gold ? 600 : 800);
+        }, Math.round(1000 - 450 * d.t));
       }
     }
   };
@@ -131,41 +129,43 @@ export default function MemoryGame() {
         </div>
         <p className="mb-4 text-zinc-600 dark:text-zinc-400">Hur vill du para ihop?</p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -4 }}
             onClick={() => setMode("word")}
-            className="flex flex-col items-center gap-3 rounded-3xl bg-gradient-to-br from-emerald-400 to-green-600 p-8 text-white shadow-lg transition hover:-translate-y-1 active:scale-95"
+            className="flex flex-col items-center gap-3 rounded-3xl bg-gradient-to-br from-emerald-400 to-green-600 p-8 text-white shadow-lg"
           >
-            {/* Mini-exempel: bild + ord */}
             <span className="flex items-center gap-2">
               <span className="rounded-xl bg-white/25 p-2 text-3xl">🐱</span>
               <span className="rounded-xl bg-white/25 px-3 py-2 text-xl font-bold">katt</span>
             </span>
             <span className="text-lg font-bold">Ord &amp; bild</span>
             <span className="text-sm opacity-90">Matcha ord med bild</span>
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -4 }}
             onClick={() => setMode("picture")}
-            className="flex flex-col items-center gap-3 rounded-3xl bg-gradient-to-br from-fuchsia-400 to-pink-500 p-8 text-white shadow-lg transition hover:-translate-y-1 active:scale-95"
+            className="flex flex-col items-center gap-3 rounded-3xl bg-gradient-to-br from-fuchsia-400 to-pink-500 p-8 text-white shadow-lg"
           >
-            {/* Mini-exempel: bild + bild */}
             <span className="flex items-center gap-2">
               <span className="rounded-xl bg-white/25 p-2 text-3xl">🐱</span>
               <span className="rounded-xl bg-white/25 p-2 text-3xl">🐱</span>
             </span>
             <span className="text-lg font-bold">Bild &amp; bild</span>
             <span className="text-sm opacity-90">Matcha två likadana bilder</span>
-          </button>
+          </motion.button>
         </div>
       </main>
     );
   }
 
-  // 2) Välj kategori
+  // 2) Välj äventyr/kategori
   if (!category)
-    return <CategoryPicker title="Para ihop" onPick={setCategory} onBack={() => setMode(null)} />;
+    return <CategoryPicker game="memory" title="Para ihop" onPick={setCategory} onBack={() => setMode(null)} />;
 
   // 3) Välj nivå
-  if (!level)
+  if (!level || !d)
     return (
       <LevelPicker
         game="memory"
@@ -177,63 +177,93 @@ export default function MemoryGame() {
     );
 
   // 4) Vunnit
-  if (won) {
+  if (lesson.done && lesson.result) {
     return (
       <VictoryScreen
         title="Alla par hittade!"
-        stars={stars}
-        xp={xp}
+        stars={lesson.result.stars}
+        xp={lesson.result.xp}
         detail={`${moves} drag`}
         gold={gold}
-        onNext={level < 4 && !gold ? () => pickLevel((level + 1) as Level) : undefined}
-        onReplay={() => start(category, level, mode)}
+        bestCombo={lesson.bestCombo}
+        onNext={level < LEVEL_COUNT && !gold ? () => pickLevel(level + 1) : undefined}
+        onReplay={() => start(category, level, mode, gold)}
         onChangeLevel={backToLevels}
       />
     );
   }
 
+  const cols = cards.length <= 8 ? "grid-cols-4" : cards.length <= 12 ? "grid-cols-4" : "grid-cols-4 sm:grid-cols-5";
+
   // 5) Spelplan
   return (
     <main dir={getLanguage(lang).dir} className="mx-auto max-w-xl p-6">
-      <div className="mb-4 flex items-center gap-3">
-        <BackButton onClick={backToLevels} />
-        <ProgressBar value={pairs ? matched.size / pairs : 0} />
-        <span dir="ltr" className="shrink-0 font-semibold text-zinc-500 dark:text-zinc-400">
-          Drag: {moves}
-        </span>
-      </div>
-      <div className="grid grid-cols-4 gap-3">
+      <GameHeader
+        onBack={backToLevels}
+        progress={pairs ? matched.size / pairs : 0}
+        level={level}
+        gold={gold}
+        combo={lesson.combo}
+        extra={
+          <span dir="ltr" className="shrink-0 font-semibold text-zinc-500 dark:text-zinc-400">
+            Drag: {moves}
+          </span>
+        }
+      />
+      <div className={cn("mt-4 grid gap-2 sm:gap-3", cols)} style={{ perspective: 800 }}>
         {cards.map((card, i) => {
           const isUp = flipped.includes(i) || matched.has(card.conceptId);
+          const isMatched = matched.has(card.conceptId);
           return (
-            <button
+            <motion.button
               key={card.key}
               onClick={() => onFlip(i)}
-              className={cn(
-                "flex aspect-square items-center justify-center rounded-2xl p-2 text-center shadow transition active:scale-95",
-                isUp
-                  ? "bg-white dark:bg-zinc-800"
-                  : "bg-gradient-to-br from-purple-400 to-pink-400 text-white",
-                matched.has(card.conceptId) && "opacity-60"
-              )}
+              initial={{ scale: 0, rotate: -10 }}
+              animate={{
+                scale: isMatched ? [1, 1.12, 1] : 1,
+                rotate: 0,
+                rotateY: isUp ? 180 : 0,
+              }}
+              transition={{
+                rotateY: { duration: 0.35 },
+                scale: { duration: 0.35 },
+                default: { delay: i * 0.025, type: "spring", stiffness: 300, damping: 20 },
+              }}
+              whileTap={{ scale: 0.93 }}
+              className="relative aspect-square"
+              style={{ transformStyle: "preserve-3d" }}
+              aria-label={isUp ? card.word : "Dolt kort"}
             >
-              {isUp ? (
+              {/* Baksida */}
+              <span
+                className="absolute inset-0 flex items-center justify-center rounded-2xl bg-gradient-to-br from-purple-400 to-pink-400 text-2xl text-white shadow"
+                style={{ backfaceVisibility: "hidden" }}
+              >
+                🦉
+              </span>
+              {/* Framsida */}
+              <span
+                className={cn(
+                  "absolute inset-0 flex items-center justify-center rounded-2xl bg-white p-1 text-center shadow dark:bg-zinc-800",
+                  isMatched && "ring-4 ring-emerald-400"
+                )}
+                style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+              >
                 <span
                   className={
                     card.kind === "emoji"
                       ? "text-4xl"
-                      : "text-lg font-bold text-purple-600 dark:text-purple-300"
+                      : "break-words text-sm font-bold leading-tight text-purple-600 sm:text-lg dark:text-purple-300"
                   }
                 >
                   {card.content}
                 </span>
-              ) : (
-                <span className="text-2xl">❓</span>
-              )}
-            </button>
+              </span>
+            </motion.button>
           );
         })}
       </div>
+      <Coach event={coach.event} />
     </main>
   );
 }

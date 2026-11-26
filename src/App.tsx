@@ -12,6 +12,10 @@ import MathGame from "./pages/MathGame";
 import AbcGame from "./pages/AbcGame";
 import ListeningGame from "./pages/ListeningGame";
 import CountingGame from "./pages/CountingGame";
+import PuzzleGame from "./pages/PuzzleGame";
+import BalloonGame from "./pages/BalloonGame";
+import CatapultGame from "./pages/CatapultGame";
+import TraceGame from "./pages/TraceGame";
 import { Backdrop } from "./components/Backdrop";
 import { useProfile } from "./stores/useProfile";
 import { useTheme } from "./stores/useTheme";
@@ -41,6 +45,10 @@ export default function App() {
         <Route path="/game/abc" element={<AbcGame />} />
         <Route path="/game/listen" element={<ListeningGame />} />
         <Route path="/game/counting" element={<CountingGame />} />
+        <Route path="/game/puzzle" element={<PuzzleGame />} />
+        <Route path="/game/balloon" element={<BalloonGame />} />
+        <Route path="/game/catapult" element={<CatapultGame />} />
+        <Route path="/game/trace" element={<TraceGame />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

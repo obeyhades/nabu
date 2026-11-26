@@ -1,50 +1,55 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CONCEPTS } from "../data/concepts";
+import { motion } from "framer-motion";
+import { CONCEPTS, labelOf } from "../data/concepts";
+import { LEVEL_COUNT } from "../data/levels";
 import { useSettings } from "../stores/useSettings";
-import { useProfile } from "../stores/useProfile";
-import { useStats, XP_PER_STAR } from "../stores/useStats";
 import { useSpeech } from "../hooks/useSpeech";
+import { useLesson } from "../hooks/useLesson";
 import { LevelPicker } from "../components/LevelPicker";
-import { ProgressBar } from "../components/ProgressBar";
-import { BackButton } from "../components/BackButton";
+import { GameHeader } from "../components/GameHeader";
+import { QuestionStage } from "../components/QuestionStage";
+import { ChoiceButton } from "../components/ChoiceButton";
+import { choiceState } from "../lib/choice";
+import { Coach } from "../components/Coach";
+import { useCoach } from "../hooks/useCoach";
 import { VictoryScreen } from "../components/VictoryScreen";
-import { celebrate } from "../lib/celebrate";
-import { playCorrect, playWrong, playLevelUp } from "../lib/sfx";
-import { starKey, goldStarKey } from "../lib/progress";
+import { difficulty } from "../lib/difficulty";
 import { shuffle } from "../lib/shuffle";
 import { cn } from "../lib/cn";
 import type { Level } from "../types";
 
-const ROUNDS = 5;
 const COUNT_CAT = "all"; // räkna har ingen kategori
+const MAX = 20;
 
-// Antal saker att räkna per nivå
-const RANGE_BY_LEVEL: Record<Level, [number, number]> = {
-  1: [1, 3],
-  2: [2, 5],
-  3: [4, 7],
-  4: [6, 9],
-};
+// Siffer-ordens id:n 1–20 (för uppläsning på valt språk – ljuden finns redan!)
+const NUMBER_IDS = [
+  "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+  "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
+];
 
-// Siffer-ordens id:n (för uppläsning på valt språk – ljuden finns redan!)
-const NUMBER_IDS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
-
-type Round = { emoji: string; count: number; options: number[] };
+/** Item = en sak på skärmen; `target` = ska räknas. */
+type Round = { emoji: string; other: string | null; items: boolean[]; count: number; options: number[] };
 
 function randint(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 /**
- * Svarsalternativ: rätt antal + de närmaste talen inom 1–9 (slumpat bland
- * lika nära). Väljer från en färdig lista i stället för att slumpa i en loop –
- * vid 1 eller 9 finns bara två tal inom ±2, så loopen kunde aldrig bli klar.
+ * Hur många saker per nivå: 1–3 på nivå 1 → 10–20 på nivå 20.
+ * Från nivå 13 blandas en annan sak in som inte ska räknas.
  */
+function rangeFor(level: Level): [number, number] {
+  const hi = Math.min(MAX, Math.round(3 + (level - 1) * (17 / 19)));
+  const lo = Math.max(1, Math.round(hi * 0.5));
+  return [lo, hi];
+}
+
+/** Rätt antal + de närmaste talen inom 1–20 (väljs ur en lista – kan aldrig fastna). */
 function makeOptions(count: number, optionCount: number): number[] {
-  const others = shuffle(
-    Array.from({ length: 9 }, (_, i) => i + 1).filter((n) => n !== count)
-  ).sort((a, b) => Math.abs(a - count) - Math.abs(b - count));
+  const others = shuffle(Array.from({ length: MAX }, (_, i) => i + 1).filter((n) => n !== count)).sort(
+    (a, b) => Math.abs(a - count) - Math.abs(b - count)
+  );
   return shuffle([count, ...others.slice(0, optionCount - 1)]);
 }
 
@@ -52,72 +57,61 @@ function makeOptions(count: number, optionCount: number): number[] {
 export default function CountingGame() {
   const navigate = useNavigate();
   const lang = useSettings((s) => s.lang);
-  const addStars = useProfile((s) => s.addStars);
-  const completeLesson = useStats((s) => s.completeLesson);
   const { speak } = useSpeech();
+  const lesson = useLesson("counting");
+  const coach = useCoach();
 
   const [level, setLevel] = useState<Level | null>(null);
   const [gold, setGold] = useState(false);
   const [rounds, setRounds] = useState<Round[]>([]);
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
-  const [mistakes, setMistakes] = useState(0);
-  const [done, setDone] = useState(false);
 
   const current = rounds[index];
-  const stars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
-  const xp = stars * XP_PER_STAR * (gold ? 2 : 1);
 
   const startLevel = (lvl: Level, isGold = false) => {
-    const [lo, hi] = RANGE_BY_LEVEL[lvl];
-    const emojiPool = shuffle(
-      CONCEPTS.filter((c) => c.category !== "numbers").map((c) => c.emoji)
-    );
-    const optionCount = isGold ? 4 : 3;
-    const built: Round[] = Array.from({ length: ROUNDS }, (_, i) => {
+    const d = difficulty(lvl, isGold);
+    const [lo, hi] = rangeFor(lvl);
+    const emojiPool = shuffle(CONCEPTS.filter((c) => c.category !== "numbers").map((c) => c.emoji));
+    const mixed = lvl >= 13 || isGold;
+    const built: Round[] = Array.from({ length: d.rounds }, (_, i) => {
       const count = randint(lo, hi);
-      return { emoji: emojiPool[i % emojiPool.length], count, options: makeOptions(count, optionCount) };
+      const emoji = emojiPool[(i * 2) % emojiPool.length];
+      const other = mixed ? emojiPool[(i * 2 + 1) % emojiPool.length] : null;
+      const extra = other ? randint(2, Math.max(3, Math.round(count / 2))) : 0;
+      const items = shuffle([...Array(count).fill(true), ...Array(extra).fill(false)]);
+      return { emoji, other, items, count, options: makeOptions(count, Math.min(d.options, 5)) };
     });
+    setRounds(built);
     setLevel(lvl);
     setGold(isGold);
-    setRounds(built);
     setIndex(0);
-    setMistakes(0);
     setPicked(null);
-    setDone(false);
+    lesson.reset();
   };
 
   const answer = (opt: number) => {
     if (picked !== null || !current || !level) return;
     setPicked(opt);
     if (opt === current.count) {
-      playCorrect();
-      // säg siffran på valt språk (ljudklipp finns för 1–9)
+      coach.cheer(lesson.correct());
+      // säg talet på valt språk
       const numConcept = CONCEPTS.find((c) => c.id === NUMBER_IDS[current.count - 1]);
-      if (numConcept) {
-        speak(numConcept.labels[lang] ?? numConcept.labels.sv ?? "", lang, numConcept.id);
-      }
+      if (numConcept) speak(labelOf(numConcept, lang), lang, numConcept.id);
       window.setTimeout(() => {
-        if (index === ROUNDS - 1) {
-          const finalStars = mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1;
-          addStars(gold ? goldStarKey("counting", COUNT_CAT, level) : starKey("counting", COUNT_CAT, level), finalStars);
-          completeLesson(finalStars * XP_PER_STAR * (gold ? 2 : 1));
-          celebrate();
-          playLevelUp();
-          setDone(true);
-        } else {
+        if (index === rounds.length - 1) lesson.finish(COUNT_CAT, level, gold, rounds.length);
+        else {
           setIndex((n) => n + 1);
           setPicked(null);
         }
-      }, 900);
+      }, 1000);
     } else {
-      playWrong();
-      setMistakes((m) => m + 1);
+      lesson.wrong();
+      coach.comfort();
       window.setTimeout(() => setPicked(null), 800);
     }
   };
 
-  // 1) Välj nivå (räkna hoppar över kategori)
   if (!level)
     return (
       <LevelPicker
@@ -130,68 +124,78 @@ export default function CountingGame() {
       />
     );
 
-  // 2) Klar
-  if (done) {
+  if (lesson.done && lesson.result) {
     return (
       <VictoryScreen
         title="Bra räknat!"
-        stars={stars}
-        xp={xp}
-        detail={mistakes === 0 ? "Helt rätt!" : `${mistakes} fel`}
+        stars={lesson.result.stars}
+        xp={lesson.result.xp}
+        detail={lesson.mistakes === 0 ? "Helt rätt!" : `${lesson.mistakes} fel`}
         gold={gold}
-        onNext={level < 4 && !gold ? () => startLevel((level + 1) as Level) : undefined}
+        bestCombo={lesson.bestCombo}
+        onNext={level < LEVEL_COUNT && !gold ? () => startLevel(level + 1) : undefined}
         onReplay={() => startLevel(level, gold)}
         onChangeLevel={() => setLevel(null)}
       />
     );
   }
 
-  // 3) Räkna sakerna
+  if (!current) return null;
+  const big = current.items.length > 12;
+
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
-      <div className="flex items-center gap-3 pt-2">
-        <BackButton onClick={() => setLevel(null)} />
-        <ProgressBar value={(index + 1) / ROUNDS} />
-      </div>
+      <GameHeader
+        onBack={() => setLevel(null)}
+        progress={index / rounds.length}
+        level={level}
+        gold={gold}
+        combo={lesson.combo}
+      />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-6">
-        <p className="font-semibold text-zinc-600 dark:text-zinc-300">Hur många ser du?</p>
+      <QuestionStage qkey={index}>
+        <p className="text-lg font-semibold text-zinc-600 dark:text-zinc-300">
+          Hur många <span className="text-3xl align-middle">{current.emoji}</span> ser du?
+        </p>
 
-        <div className="flex max-w-xs flex-wrap items-center justify-center gap-2 rounded-3xl bg-white p-6 text-5xl shadow-xl dark:bg-zinc-800">
-          {Array.from({ length: current.count }).map((_, i) => (
-            <span key={i} className="animate-pop" style={{ animationDelay: `${i * 0.08}s` }}>
-              {current.emoji}
-            </span>
+        <div
+          className={cn(
+            "grid gap-1.5 rounded-3xl bg-white p-5 shadow-xl dark:bg-zinc-800",
+            big ? "grid-cols-5 text-3xl" : "grid-cols-4 text-5xl sm:grid-cols-5"
+          )}
+        >
+          {current.items.map((isTarget, i) => (
+            <motion.span
+              key={i}
+              initial={{ scale: 0, rotate: -30 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: i * 0.05, type: "spring", stiffness: 400, damping: 14 }}
+              className="flex items-center justify-center"
+            >
+              {isTarget ? current.emoji : current.other}
+            </motion.span>
           ))}
         </div>
 
-        <div className={cn("grid w-full gap-3", gold ? "grid-cols-2" : "grid-cols-3")}>
-          {current.options.map((opt) => (
-            <button
+        <div className={cn("grid w-full gap-3", current.options.length <= 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4")}>
+          {current.options.map((opt, i) => (
+            <ChoiceButton
               key={opt}
+              index={i}
+              state={choiceState(opt, picked, current.count)}
               onClick={() => answer(opt)}
-              disabled={picked !== null}
-              className={cn(
-                "rounded-3xl p-6 text-4xl font-black shadow transition active:scale-95",
-                picked === null &&
-                  "bg-white text-rose-500 hover:-translate-y-0.5 dark:bg-zinc-800 dark:text-rose-300",
-                picked !== null && opt === current.count && "bg-emerald-500 text-white",
-                picked !== null && opt !== current.count && opt === picked && "bg-red-400 text-white",
-                picked !== null &&
-                  opt !== current.count &&
-                  opt !== picked &&
-                  "bg-white text-zinc-300 dark:bg-zinc-800 dark:text-zinc-600"
-              )}
+              className={cn("p-6 text-4xl font-black", picked === null && "text-rose-500 dark:text-rose-300")}
             >
               {opt}
-            </button>
+            </ChoiceButton>
           ))}
         </div>
 
         <span dir="ltr" className="font-semibold text-zinc-500 dark:text-zinc-400">
-          {index + 1} / {ROUNDS}
+          {index + 1} / {rounds.length}
         </span>
-      </div>
+      </QuestionStage>
+      <Coach event={coach.event} />
     </main>
   );
 }

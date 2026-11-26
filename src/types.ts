@@ -19,14 +19,23 @@ export type Category =
   | "body"
   | "blandad"; // dynamisk mix från alla kategorier
 
-// Svårighetsgrad: 1 Nybörjare, 2 Mellannivå, 3 Utmanare, 4 Mästare
-export type Level = 1 | 2 | 3 | 4;
+/**
+ * Det man spelar i ett ordspel: en kategori (fri träning) eller
+ * "adventure" = äventyrsstigen som går genom alla kategorier.
+ */
+export type PlayCategory = Category | "adventure";
+
+/** Svårighetsband för ord: 1 Nybörjare, 2 Mellannivå, 3 Utmanare, 4 Mästare */
+export type Band = 1 | 2 | 3 | 4;
+
+/** Nivå på stigen: 1–20 (5 nivåer per band). */
+export type Level = number;
 
 export type Concept = {
   id: string;
   emoji: string;
   category: Category;
-  level: Level;
+  level: Band; // hur svårt ordet är
   // Partiell: alla språk behöver inte vara ifyllda ännu.
   labels: Partial<Record<LangCode, string>>;
 };
@@ -38,7 +47,11 @@ export type GameId =
   | "math"
   | "abc"
   | "listen"
-  | "counting";
+  | "counting"
+  | "puzzle"
+  | "trace"
+  | "balloon"
+  | "catapult";
 
 export type GameDefinition = {
   id: GameId;
@@ -48,6 +61,7 @@ export type GameDefinition = {
   gradient: string; // tailwind-gradient för spelkortet
   path: string;
   solo?: boolean; // spelet har ingen kategori-väljare (t.ex. matte)
+  isNew?: boolean; // visa "Ny!"-märke på startsidan
 };
 
 export type Profile = {
