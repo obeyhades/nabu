@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { ZoomIn } from "lucide-react";
 import type { LangCode, Met, OwnedSticker, StickerId } from "../../types";
 import { cn } from "../../lib/cn";
+import { longestWord } from "../../lib/fit";
 import { isBlank } from "../../lib/rewards";
 import { STICKER_ALIGN, conceptOf, slotGlyph, stickerCaption, stickerSize, type ShelfView } from "../../lib/stickerBook";
 import { stickerName, type BookShelf } from "../../data/stickers";
@@ -22,6 +23,12 @@ type Owned = Record<StickerId, OwnedSticker>;
  */
 
 const KLURING = "Kluring: spåra den i repetitionsnivåerna 13–15";
+/** Platsens ord: hela ordet på en rad (~0,6 em per tecken i fet stil + ett teckens marginal, som ordkorten). */
+function captionFont(text: string): string {
+  const n = Math.max(1, longestWord(text));
+  return `min(var(--lbl), max(10px, calc(100cqi / ${((n + 1) * 0.6).toFixed(2)})))`;
+}
+
 export function StickerShelf({
   shelf,
   offset,
@@ -55,6 +62,11 @@ export function StickerShelf({
   const tinted = !!view.lifted && shelf.ids.includes(view.lifted);
   const headingId = `hylla-${shelf.ids[0]?.replace(/[^a-z0-9]/gi, "-")}`;
   const letters = poster && !!shelf.ids[0]?.startsWith("l:");
+  // Fem platser med korta ord (siffror, räknetåget): fem i rad redan på telefonen. Fem med långa
+  // ord (helikopter, vattenmelon): 3 + 2 centrerat på telefonen, annars avstavas ordet i den smala platsen.
+  const longCaption = shelf.ids.some((id) => [...(stickerCaption(id, lang)?.text ?? "")].length > 6);
+  // Minsta telefonerna (320 px): ett ord på tio bokstäver (sköldpadda, hamburgare) ryms inte i fyra kolumner
+  const veryLong = shelf.ids.length > 4 && shelf.ids.some((id) => longestWord(stickerCaption(id, lang)?.text ?? "") >= 10);
 
   return (
     <section
@@ -84,7 +96,15 @@ export function StickerShelf({
         dir={rtl ? "rtl" : undefined}
         className={cn(
           "grid grid-cols-4 gap-3",
-          poster ? "sm:grid-cols-6 md:grid-cols-8" : "sm:grid-cols-5 md:grid-cols-6"
+          // Räknetåget och Pärlbandet har fem platser per hylla: fem kolumner redan på telefonen
+          // (tätare mellanrum) – aldrig 4 + 1 – och ingen tom sjätte på större skärmar
+          poster
+            ? "sm:grid-cols-6 md:grid-cols-8"
+            : shelf.ids.length === 5
+              ? longCaption
+                ? "grid-cols-6 sm:grid-cols-5 [&>*]:col-span-2 sm:[&>*]:col-span-1 [&>*:nth-child(4)]:col-start-2 sm:[&>*:nth-child(4)]:col-start-auto"
+                : "grid-cols-5 gap-2 sm:gap-3"
+              : cn("sm:grid-cols-5 md:grid-cols-6", veryLong && "max-[359px]:grid-cols-3")
         )}
       >
         {shelf.ids.map((id, i) => (
@@ -143,13 +163,14 @@ function Slot({
   const hinted = view.hint === id;
 
   return (
-    <div className="relative">
+    <div className="relative flex">
       <button
         type="button"
         onClick={() => onSlot(id)}
         aria-label={placed ? `Klistermärke: ${name}${o.tricky === 1 ? ", Kluring" : ""}` : `Tom plats: ${name}`}
         className={cn(
-          "relative flex aspect-square w-full scroll-mb-[200px] scroll-mt-24 flex-col items-center justify-center rounded-2xl transition-colors duration-300 focus-visible:ring-4 focus-visible:ring-purple-400",
+          // Kvadrat, men växer på höjden när ordet behöver två rader (alla platser i raden följer med)
+          "@container relative flex aspect-square w-full scroll-mb-[calc(var(--nav-space)+var(--tray-h)+28px)] scroll-mt-24 flex-col items-center justify-center rounded-2xl px-0.5 py-1 transition-colors duration-300 focus-visible:ring-4 focus-visible:ring-purple-400",
           hinted ? "outline-dashed outline-4 outline-offset-2 outline-amber-400" : "outline-none",
           placed
             ? "active:bg-white/40 dark:active:bg-white/5"
@@ -162,11 +183,12 @@ function Slot({
         {/* vågen (sidan klar) → vickningen (fel plats) → smacket (landning) → märket */}
         <span
           key={`w${view.wave}`}
-          className={cn("flex flex-col items-center", placed && view.wave > 0 && "animate-page-wave")}
+          className={cn("flex w-full min-w-0 flex-col items-center", placed && view.wave > 0 && "animate-page-wave")}
           style={placed && view.wave > 0 ? { animationDelay: `${index * 40}ms` } : undefined}
         >
-          <span key={`v${wiggleN}`} className={cn("flex flex-col items-center", wiggleN > 0 && "animate-wiggle-soft")}>
-            <span ref={(el) => registerSpot(id, el)} className={cn("grid h-[52px] w-[52px] place-items-center", STICKER_ALIGN)}>
+          <span key={`v${wiggleN}`} className={cn("flex w-full min-w-0 flex-col items-center", wiggleN > 0 && "animate-wiggle-soft")}>
+            {/* Märkets ruta: 52 px, men aldrig bredare än platsen (fem i rad på 320 px) */}
+            <span ref={(el) => registerSpot(id, el)} className={cn("grid h-[52px] w-full max-w-[52px] place-items-center", STICKER_ALIGN)}>
               {placed ? (
                 <span className={cn("inline-block", view.flying === id && "invisible")}>
                   <motion.span
@@ -211,7 +233,10 @@ function Slot({
                 aria-hidden
                 lang={caption.lang}
                 dir={caption.dir}
-                className="mt-0.5 max-w-full truncate px-0.5 text-[11px] font-bold leading-tight text-zinc-700 dark:text-zinc-200"
+                // Ordet på en rad, så stort som platsen tillåter (högst 12 px, 14 px på surfplattan). Först
+                // under 10 px får det dela sig på två rader (avstavning efter lang) – aldrig flöda över grannen.
+                className="word-fit mt-0.5 line-clamp-2 max-w-full text-center font-bold leading-tight text-zinc-700 [--lbl:12px] dark:text-zinc-200 md:[--lbl:14px]"
+                style={{ fontSize: captionFont(caption.text) }}
               >
                 {caption.text}
               </span>

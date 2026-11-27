@@ -654,10 +654,10 @@ The root is wrapped in `<MotionConfig reducedMotion="user">` with `dir="ltr"`, a
 - Empty: a `<button>` with a dashed 2 px border (zinc-500 light, zinc-400 dark, ≥3:1 on scenes), `bg-white/60 dark:bg-zinc-900/40`, a silhouette (`.sticker-ghost`) and the word label. This makes placement a shape-and-word match.
 
 **Kuvertet tray:**
-- `fixed inset-x-0 bottom-[68px] z-30 h-[104px]`, solid background, `dir="ltr"`, horizontal scroll, 80 px items.
+- `fixed inset-x-0 bottom-[var(--nav-space)] z-30 h-[var(--tray-h)]` (68 px nav + 104 px tray; 52 + 80 px on a landscape phone, plus the home indicator via `--safe-b`, see `src/index.css`), solid background, `dir="ltr"`, horizontal scroll, 80 px items (64 px on a landscape phone).
 - This page's stickers come first, then a chip "{n} till andra sidor →".
 - Tapping a sticker that belongs to another page navigates `replace` to that page with `?place=id`, so the page turns automatically before the matching step.
-- Page content uses `pb-[190px]`.
+- Page content uses `pb-nav-tray` (190 px in portrait; follows `--nav-h`/`--tray-h`).
 
 **Placement flow (tap-only path required, WCAG 2.5.7):**
 1. Tap a tray sticker: it lifts (`aria-pressed`, scale 1.1), the word is spoken (`speak(label, lang, conceptId)`), its band row is tinted, and empty slots brighten steadily (no pulse).

@@ -5,6 +5,7 @@ import type { NestItem } from "../../types";
 import { wrapTab } from "../../lib/focusTrap";
 import { giftLine } from "../../lib/stickerBook";
 import type { BookPage } from "../../data/stickers";
+import { useScrollLock } from "../../hooks/useScrollLock";
 import { Mascot } from "../Mascot";
 import { GiftArt } from "./GiftArt";
 
@@ -19,6 +20,7 @@ export function PageParty({ page, gift, onClose }: { page: BookPage; gift: NestI
   const primary = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
+  useScrollLock();
   useEffect(() => {
     close.current = onClose;
   }, [onClose]);
@@ -45,7 +47,8 @@ export function PageParty({ page, gift, onClose }: { page: BookPage; gift: NestI
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-4"
+      // Rutan rymms alltid (liggande mobil): den får en största höjd och rullar själv
+      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto overscroll-contain bg-black/35 p-4 pb-[max(1rem,var(--safe-b))]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -62,7 +65,7 @@ export function PageParty({ page, gift, onClose }: { page: BookPage; gift: NestI
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9 }}
         transition={{ type: "spring", stiffness: 260, damping: 18 }}
-        className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white px-6 pb-6 pt-5 text-center shadow-2xl dark:bg-zinc-900"
+        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto overflow-x-hidden overscroll-contain rounded-3xl bg-white px-6 pb-6 pt-5 text-center shadow-2xl dark:bg-zinc-900 short:max-w-lg short:pb-4 short:pt-3"
       >
         {/* solstrålar bakom Nabu (stilla vid reducerad rörelse) */}
         <span
@@ -70,7 +73,7 @@ export function PageParty({ page, gift, onClose }: { page: BookPage; gift: NestI
           className="pointer-events-none absolute left-1/2 top-2 h-40 w-40 -translate-x-1/2 rounded-full opacity-30 motion-safe:animate-[spin_24s_linear_infinite]"
           style={{ background: "repeating-conic-gradient(rgba(251,191,36,0.8) 0deg 12deg, transparent 12deg 24deg)" }}
         />
-        <div className="relative flex h-32 items-center justify-center">
+        <div className="relative flex h-32 items-center justify-center short:h-20">
           <Mascot mood="cheer" className="text-5xl" />
           <span aria-hidden className="absolute right-[22%] top-3 text-3xl">
             {page.emoji}
@@ -88,7 +91,7 @@ export function PageParty({ page, gift, onClose }: { page: BookPage; gift: NestI
             initial={{ opacity: 0, y: 16, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: 0.9, type: "spring", stiffness: 260, damping: 18 }}
-            className="relative mt-5 flex items-center gap-3 rounded-2xl bg-amber-50 p-3 text-left ring-1 ring-amber-200 dark:bg-amber-400/10 dark:ring-amber-300/30"
+            className="relative mt-5 flex items-center gap-3 rounded-2xl bg-amber-50 p-3 text-left ring-1 ring-amber-200 dark:bg-amber-400/10 dark:ring-amber-300/30 short:mt-3 short:p-2"
           >
             <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-white shadow-sm dark:bg-zinc-800">
               <GiftArt item={gift} size={40} />
@@ -100,7 +103,7 @@ export function PageParty({ page, gift, onClose }: { page: BookPage; gift: NestI
           </motion.div>
         )}
 
-        <div className="relative mt-5 flex flex-col gap-3">
+        <div className="relative mt-5 flex flex-col gap-3 short:mt-3 short:flex-row short:[&>*]:flex-1">
           {gift && (
             <Link
               to="/nest"

@@ -9,6 +9,7 @@ import { LANG_NAMES_SV, formatDateSv, stickerVoice } from "../../lib/stickerBook
 import { GAMES } from "../../data/gameRegistry";
 import { LANGUAGES } from "../../data/languages";
 import { OWL_STICKER, parseStickerId } from "../../data/stickers";
+import { useScrollLock } from "../../hooks/useScrollLock";
 import { useSpeech } from "../../hooks/useSpeech";
 import { Sticker } from "../Sticker";
 
@@ -47,6 +48,7 @@ export function WordCardSheet({
   const sheet = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
   const [play, setPlay] = useState(0);
+  useScrollLock();
 
   // Senaste onClose utan att effekten nedan startar om (då skulle fokus hoppa)
   const close = useRef(onClose);
@@ -113,7 +115,8 @@ export function WordCardSheet({
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", stiffness: 260, damping: 28 }}
-        className="absolute inset-x-0 bottom-0 mx-auto max-h-[88vh] max-w-lg overflow-y-auto rounded-t-3xl bg-white px-5 pb-8 pt-3 shadow-2xl dark:bg-zinc-900"
+        // dvh: toppen hamnar aldrig under Safaris adressfält; rullningen stannar i bladet
+        className="absolute inset-x-0 bottom-0 mx-auto max-h-[88dvh] max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl bg-white px-5 pb-[max(2rem,var(--safe-b))] pt-3 shadow-2xl dark:bg-zinc-900"
       >
         <span aria-hidden className="mx-auto mb-2 block h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700" />
         <button
@@ -153,8 +156,10 @@ export function WordCardSheet({
                 key={l.code}
                 className={cn("flex items-center gap-3 px-3 py-1.5", l.code === lang && "rounded-2xl bg-purple-50 dark:bg-purple-500/15")}
               >
-                <span className="w-20 shrink-0 text-sm font-semibold text-zinc-500 dark:text-zinc-400">{LANG_NAMES_SV[l.code]}</span>
-                <span lang={l.code} dir={l.dir} className="min-w-0 flex-1 text-xl font-bold [overflow-wrap:anywhere]">
+                <span className="w-16 shrink-0 text-xs font-semibold text-zinc-500 sm:w-20 sm:text-sm dark:text-zinc-400">
+                  {LANG_NAMES_SV[l.code]}
+                </span>
+                <span lang={l.code} dir={l.dir} className="word-fit flex-1 text-xl font-bold">
                   {word}
                 </span>
                 <button

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "../../lib/cn";
 import { ITEM_BY_ID } from "../../data/nestItems";
 import { useSpeech } from "../../hooks/useSpeech";
@@ -36,6 +36,17 @@ export function NestIntro({ welcome, shopOn, onDone }: { welcome: number; shopOn
   const [i, setI] = useState(0);
   const step = steps[Math.min(i, steps.length - 1)];
   const last = step.id === "luva";
+  const box = useRef<HTMLElement>(null);
+
+  // Bubblan (med Nästa och luvan) ska synas ovanför menyn på en låg skärm.
+  // Efter bytet (texten tonar i 0,2 s och luvan gör rutan högre) – aldrig mer än nödvändigt.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      box.current?.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+    }, i === 0 ? 0 : 260);
+    return () => window.clearTimeout(t);
+  }, [i]);
 
   // Första raden läses upp när boet öppnas (barnet har just tryckt sig hit)
   useEffect(() => {
@@ -50,12 +61,18 @@ export function NestIntro({ welcome, shopOn, onDone }: { welcome: number; shopOn
   };
 
   return (
-    <section dir="ltr" aria-label="Välkommen till Nabus bo" className="mt-4">
+    <section
+      ref={box}
+      dir="ltr"
+      aria-label="Välkommen till Nabus bo"
+      className="mt-4 scroll-mb-[calc(var(--nav-space)+0.75rem)] scroll-mt-3 side:mt-3"
+    >
       {/* Nabus pratbubbla pekar upp mot Nabu i scenen */}
       <div className="relative rounded-3xl bg-white p-4 shadow-lg dark:bg-zinc-800">
         <span
           aria-hidden
-          className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-white dark:bg-zinc-800"
+          // liggande: bubblan står bredvid scenen och pekar åt vänster mot Nabu
+          className="absolute -top-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-white side:-left-2 side:top-10 side:translate-x-0 dark:bg-zinc-800"
         />
         <AnimatePresence mode="wait" initial={false}>
           <motion.div

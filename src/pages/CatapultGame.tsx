@@ -16,6 +16,10 @@ import { VictoryScreen } from "../components/VictoryScreen";
 import { difficulty, lerp, type Difficulty } from "../lib/difficulty";
 import { playPop, playWhoosh } from "../lib/sfx";
 import { shuffle } from "../lib/shuffle";
+import { cn } from "../lib/cn";
+import { fitText } from "../lib/fit";
+import { GAME_MAIN } from "../lib/layout";
+import { useElementSize } from "../hooks/useElementSize";
 import type { Concept, Level, PlayCategory } from "../types";
 
 /* ------------------------------------------------------------------ */
@@ -44,6 +48,15 @@ const CRATE_W = 54;
 const CRATE_H = 40;
 const FRAME = 64; // bildramen ovanpå tornet
 const TOWER_HALF = FRAME / 2;
+
+// Bara utseendet (fysiken räknar alltid i hela världen 0–800):
+// Stående: världen visas från x = 10. Stenen (x ≈ 117) måste ha minst ~0,7 × MAX_PULL fri yta till
+// vänster om sig, annars tar fingret slut mot skärmkanten innan ett fullt kast i 45° hinns dra.
+const CROP_L = 10;
+// Stående: högst så här mycket himmel läggs till ovanför scenen – resten blir jord under marken
+const BELOW_MAX = 240;
+const ART_PX = 56; // bildramens storlek på skärmen som vi siktar på (px) – går att känna igen
+const BALL_PX = 18; // stenens minsta storlek på skärmen (px)
 
 function armTip(deg: number) {
   const a = (deg * Math.PI) / 180;
@@ -82,6 +95,13 @@ function bobOf(tower: Tower, time: number, d: Difficulty) {
 function towerTop(tower: Tower) {
   return GROUND - tower.crates * CRATE_H - FRAME;
 }
+
+/** Generös träffyta: mindre marginal när tornen står tätare / nivån är högre. */
+function hitMargin(spacing: number, t: number) {
+  return Math.max(4, Math.min(lerp(24, 12, t), (spacing - FRAME) / 2 - 2));
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 /** Avstånd från punkt till rektangel (0 inuti). */
 function distToRect(p: Vec, l: number, t: number, r: number, b: number) {
@@ -231,38 +251,65 @@ export default function CatapultGame() {
 
   if (!current) return null;
 
-  // 4) Sikta & kasta
-  return (
-    <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-3xl flex-col gap-3 p-4 sm:p-6">
-      <GameHeader onBack={leave} progress={index / rounds.length} level={level} gold={gold} combo={lesson.combo} />
-
-      <div className="flex items-center justify-center gap-3">
-        <motion.button
-          onClick={() => speak(word, lang, current.concept.id)}
-          aria-label="Hör ordet igen"
-          animate={{ scale: [1, 1.06, 1] }}
-          transition={{ repeat: Infinity, duration: 1.6 }}
-          whileTap={{ scale: 0.9 }}
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-xl"
-        >
-          <Volume2 size={32} />
-        </motion.button>
-        {d.help === "full" ? (
-          <span className="rounded-2xl bg-white px-5 py-2 text-3xl font-extrabold text-zinc-800 shadow dark:bg-zinc-800 dark:text-zinc-100">
-            {word}
-          </span>
-        ) : (
-          <span className="font-semibold text-zinc-600 dark:text-zinc-300">Lyssna! Vilken bild?</span>
+  // Lyssna-knappen och ordet. På en liggande mobil sitter de i rubrikraden (ingen egen rad).
+  const prompt = (compact: boolean) => (
+    <>
+      <motion.button
+        onClick={() => speak(word, lang, current.concept.id)}
+        aria-label="Hör ordet igen"
+        animate={{ scale: [1, 1.06, 1] }}
+        transition={{ repeat: Infinity, duration: 1.6 }}
+        whileTap={{ scale: 0.9 }}
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-xl",
+          compact ? "h-12 w-12" : "h-16 w-16"
         )}
-      </div>
+      >
+        <Volume2 size={compact ? 24 : 32} />
+      </motion.button>
+      {d.help === "full" ? (
+        <span
+          lang={lang}
+          className={cn(
+            "word-fit min-w-0 rounded-2xl bg-white font-extrabold text-zinc-800 shadow dark:bg-zinc-800 dark:text-zinc-100",
+            compact
+              ? "line-clamp-1 px-3 py-1 text-xl"
+              : cn("px-5 py-2", fitText(word, [[8, "text-3xl"], [11, "text-2xl"]], "text-xl"), "md:text-4xl")
+          )}
+        >
+          {word}
+        </span>
+      ) : (
+        <span className="font-semibold text-zinc-600 dark:text-zinc-300 md:text-xl">Lyssna! Vilken bild?</span>
+      )}
+    </>
+  );
+
+  // 4) Sikta & kasta – scenen fyller utrymmet som blir över (både bredd och höjd)
+  return (
+    <main dir={getLanguage(lang).dir} className={cn(GAME_MAIN, "gap-3 md:max-w-4xl short:gap-2")}>
+      <GameHeader
+        onBack={leave}
+        progress={index / rounds.length}
+        level={level}
+        gold={gold}
+        combo={lesson.combo}
+        extra={
+          <>
+            <span className="hidden min-w-0 items-center gap-2 short:flex">{prompt(true)}</span>
+            <span dir="ltr" className="shrink-0 font-semibold text-zinc-500 dark:text-zinc-400">
+              {index + 1} / {rounds.length}
+            </span>
+          </>
+        }
+      />
+
+      <div className="flex items-center justify-center gap-3 short:hidden">{prompt(false)}</div>
 
       <CatapultStage key={index} round={current} d={d} onCorrect={onCorrect} onWrong={onWrong} />
 
-      <p className="text-center font-semibold text-zinc-600 dark:text-zinc-300">
-        Dra tillbaka och släpp!{" "}
-        <span dir="ltr" className="text-zinc-500 dark:text-zinc-400">
-          ({index + 1} / {rounds.length})
-        </span>
+      <p className="text-center font-semibold text-zinc-600 dark:text-zinc-300 md:text-lg short:hidden">
+        Dra tillbaka och släpp!
       </p>
 
       <Coach event={coach.event} />
@@ -298,6 +345,33 @@ function CatapultStage({
   onWrong: () => void;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [area, box] = useElementSize<HTMLDivElement>();
+  const spacing = round.towers.length > 1 ? Math.abs(round.towers[1].x - round.towers[0].x) : 200;
+  // Stående (ytan smalare än 16:9): bredden är det som tar slut. Då visas bara den del
+  // av världen där något händer – från katapulten till det sista tornet – så att
+  // katapulten, tornen och bilderna ritas större. Fysiken räknar som vanligt i hela världen.
+  const portrait = box.w > 0 && box.h > 0 && box.w / box.h < W / H;
+  const lastX = Math.max(...round.towers.map((tw) => tw.x));
+  const viewX = portrait ? CROP_L : 0;
+  const viewW = portrait ? Math.min(W, lastX + Math.min(spacing - 6, FRAME * 2.2) / 2 + 10) - CROP_L : W;
+  const sceneW = Math.floor(Math.min(box.w, (box.h * viewW) / H));
+  // Stående mobil: scenen räcker inte på höjden – himlen förlängs uppåt (sky, logiska
+  // enheter ovanför y = 0) så att scenen fyller ytan i stället för en tunn remsa.
+  // Bara utseendet: marken, tornen och fysiken ligger kvar på samma ställe.
+  // En del av det som blir över läggs som jord under marken, så att katapulten inte trycks ner
+  // i en remsa längst ner under en himmel som inget kast når upp till (högsta kastet: y ≈ −110).
+  const extra = sceneW > 0 ? Math.floor(Math.max(0, Math.min(2 * H, (box.h * viewW) / sceneW - H))) : 0;
+  const below = Math.floor(Math.min(extra * 0.4, BELOW_MAX));
+  const sky = extra - below;
+  const viewH = H + extra;
+  const ppu = sceneW > 0 ? sceneW / viewW : 1; // px per världsenhet
+  // Liten scen (mobil): bilderna på tornen ritas större (mot ART_PX) så att de går att
+  // känna igen – bara utseendet. Ramarna krockar aldrig med grannen och sticker aldrig
+  // ut ovanför träffytan (ramen + marginalen + stenen), så en träff ser alltid ut som en träff.
+  const vMax = 1 + (BALL_R + hitMargin(spacing, d.t)) / FRAME;
+  const artScale = sceneW > 0 ? clamp(Math.min(ART_PX / ppu / FRAME, (spacing - 6) / FRAME, vMax, 2.2), 1, 2.2) : 1;
+  // Stenen likaså (en stjärnsten på 13 px syns knappt på en smal mobil)
+  const ballArt = clamp(BALL_PX / (2 * BALL_R * ppu), 1, 1.4);
   const sim = useRef<Sim>({
     phase: "aim",
     ball: { ...LAUNCH },
@@ -367,9 +441,8 @@ function CatapultStage({
       s.ball.x += s.vel.x * DT;
       s.ball.y += s.vel.y * DT;
       s.flight += DT;
-      // generös träffyta: mindre marginal när tornen står tätare / nivån är högre
       const spacing = r.towers.length > 1 ? Math.abs(r.towers[1].x - r.towers[0].x) : 200;
-      const margin = Math.max(4, Math.min(lerp(24, 12, dd.t), (spacing - FRAME) / 2 - 2));
+      const margin = hitMargin(spacing, dd.t);
       for (const tw of r.towers) {
         const top = towerTop(tw) + bobOf(tw, time, dd);
         const dist = distToRect(s.ball, tw.x - TOWER_HALF, top, tw.x + TOWER_HALF, GROUND);
@@ -474,7 +547,12 @@ function CatapultStage({
   const tip = armTip(armDeg);
   const armTipNow = s.phase === "aim" ? LAUNCH : tip;
 
-  const ballPos = aim ? aim.ballAt : s.phase === "aim" ? LAUNCH : s.ball;
+  // Den bakdragna stenen ritas aldrig utanför den beskurna scenen (bara bilden – kastet startar i skopan)
+  const ballPos = aim
+    ? { x: Math.max(viewX + BALL_R * ballArt + 2, aim.ballAt.x), y: aim.ballAt.y }
+    : s.phase === "aim"
+      ? LAUNCH
+      : s.ball;
   const showBall = !(s.phase === "lock" && toppled);
 
   let preview: Vec[] = [];
@@ -484,12 +562,25 @@ function CatapultStage({
   }
 
   return (
-    <div dir="ltr" className="relative w-full overflow-hidden rounded-3xl shadow-lg">
+    // Ytan som blir över (size-containment: scenen påverkar inte ytans storlek).
+    // Liggande är scenen 16:9 och blir så stor som får plats – katapulten och tornen
+    // syns hela, utan att sidan behöver scrollas. Stående beskärs världen till
+    // katapulten och tornen (`viewX`/`viewW`) och scenen blir högre (mer himmel, `sky`).
+    <div
+      ref={area}
+      className="-mx-4 grid min-h-40 flex-1 place-items-center sm:mx-0"
+      style={{ contain: "size" }}
+    >
+    <div
+      dir="ltr"
+      className="relative overflow-hidden shadow-lg sm:rounded-3xl"
+      style={{ width: sceneW, aspectRatio: `${viewW} / ${viewH}`, visibility: sceneW ? undefined : "hidden" }}
+    >
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${W} ${H}`}
-        className="block h-auto w-full touch-none select-none"
-        style={{ aspectRatio: `${W} / ${H}`, touchAction: "none" }}
+        viewBox={`${viewX} ${-sky} ${viewW} ${viewH}`}
+        className="block h-full w-full touch-none select-none"
+        style={{ touchAction: "none" }}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
@@ -509,19 +600,60 @@ function CatapultStage({
           </radialGradient>
         </defs>
 
-        {/* Himmel, sol/måne, moln */}
-        <rect x={0} y={0} width={W} height={H} fill="url(#cat-sky)" />
-        <circle cx={690} cy={70} r={34} className="fill-yellow-300 dark:fill-amber-100" />
+        {/* Himmel, sol/måne, moln (solen och ett par moln till högt upp när himlen förlängts) */}
+        <rect x={0} y={-sky} width={W} height={H + sky} fill="url(#cat-sky)" />
+        <circle cx={Math.min(690, viewX + viewW - 50)} cy={70 - sky} r={34} className="fill-yellow-300 dark:fill-amber-100" />
         <g className="fill-white opacity-90 dark:opacity-25">
           <ellipse cx={200 + ((clock * 6) % 900) - 100} cy={80} rx={60} ry={18} />
           <ellipse cx={230 + ((clock * 6) % 900) - 100} cy={66} rx={34} ry={16} />
           <ellipse cx={480 + ((clock * 4) % 900) - 300} cy={130} rx={48} ry={14} />
+          {sky > 160 && (
+            <>
+              <ellipse cx={560 + ((clock * 5) % 900) - 400} cy={-sky * 0.35} rx={70} ry={20} />
+              <ellipse cx={590 + ((clock * 5) % 900) - 400} cy={-sky * 0.35 - 14} rx={38} ry={17} />
+              <ellipse cx={120 + ((clock * 3) % 900) - 200} cy={-sky * 0.75} rx={52} ry={15} />
+            </>
+          )}
         </g>
 
         {/* Mark och kulle */}
         <rect x={0} y={GROUND} width={W} height={H - GROUND} className="fill-green-500 dark:fill-green-800" />
         <rect x={0} y={GROUND} width={W} height={6} className="fill-green-600 dark:fill-green-900" />
         <path d="M-10 450 L-10 384 Q 60 372 160 386 Q 250 394 320 450 Z" className="fill-green-400 dark:fill-green-700" />
+        {/* Jorden under marken (bara stående, när scenen är hög) – med en mask och en morot */}
+        {below > 0 && (
+          <g>
+            <rect x={0} y={H - 1} width={W} height={below + 1} className="fill-amber-700 dark:fill-amber-950" />
+            <path
+              d={`M0 ${H + 10} Q 100 ${H + 22} 200 ${H + 12} T 400 ${H + 14} T 600 ${H + 10} T 800 ${H + 16} V${H - 1} H0 Z`}
+              className="fill-amber-800/60 dark:fill-amber-900"
+            />
+            {below > 90 && (
+              <g className="fill-amber-900/40 dark:fill-black/30">
+                <ellipse cx={viewX + viewW * 0.18} cy={H + below * 0.55} rx={16} ry={9} />
+                <ellipse cx={viewX + viewW * 0.62} cy={H + below * 0.35} rx={11} ry={7} />
+                <ellipse cx={viewX + viewW * 0.84} cy={H + below * 0.7} rx={14} ry={8} />
+              </g>
+            )}
+            {below > 120 && (
+              <>
+                <motion.text
+                  x={viewX + viewW * 0.38}
+                  y={H + below * 0.62}
+                  fontSize={42}
+                  textAnchor="middle"
+                  animate={{ x: [0, 14, 0] }}
+                  transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                >
+                  🪱
+                </motion.text>
+                <text x={viewX + viewW * 0.72} y={H + 44} fontSize={42} textAnchor="middle" transform={`rotate(-40 ${viewX + viewW * 0.72} ${H + 26})`}>
+                  🥕
+                </text>
+              </>
+            )}
+          </g>
+        )}
 
         {/* Förutsagd bana */}
         {preview.map((p, i) =>
@@ -535,6 +667,7 @@ function CatapultStage({
           <TowerView
             key={tw.concept.id}
             tower={tw}
+            artScale={artScale}
             bob={bobOf(tw, clock, d)}
             toppled={toppled === tw.concept.id}
             wobbleN={wobble?.id === tw.concept.id ? wobble.n : 0}
@@ -576,7 +709,7 @@ function CatapultStage({
 
         {/* Kulan: rund sten med stjärna */}
         {showBall && (
-          <g transform={`translate(${ballPos.x} ${ballPos.y}) rotate(${s.phase === "fly" ? s.flight * 540 : 0})`}>
+          <g transform={`translate(${ballPos.x} ${ballPos.y}) rotate(${s.phase === "fly" ? s.flight * 540 : 0}) scale(${ballArt})`}>
             <circle r={BALL_R} fill="url(#cat-stone)" stroke="#57534e" strokeWidth={2} />
             <text textAnchor="middle" dominantBaseline="central" fontSize={14} fill="#facc15">
               ★
@@ -632,11 +765,24 @@ function CatapultStage({
         )}
       </AnimatePresence>
     </div>
+    </div>
   );
 }
 
 /** Ett torn av trälådor med en inramad bild överst. */
-function TowerView({ tower, bob, toppled, wobbleN }: { tower: Tower; bob: number; toppled: boolean; wobbleN: number }) {
+function TowerView({
+  tower,
+  bob,
+  toppled,
+  wobbleN,
+  artScale = 1,
+}: {
+  tower: Tower;
+  bob: number;
+  toppled: boolean;
+  wobbleN: number;
+  artScale?: number;
+}) {
   const crates = Array.from({ length: tower.crates }, (_, j) => j);
   // frys gungningen när tornet välter, så fall-animationen får ett fast mål
   const frozen = useRef<number | null>(null);
@@ -703,10 +849,19 @@ function TowerView({ tower, bob, toppled, wobbleN }: { tower: Tower; bob: number
         animate={toppled ? { x: 70, y: GROUND - FRAME / 2 - (frameY + FRAME / 2), rotate: 360 } : { x: 0, y: 0, rotate: 0 }}
         transition={{ duration: 1, ease: "easeIn" }}
       >
-        <rect x={tower.x - FRAME / 2} y={frameY} width={FRAME} height={FRAME} rx={8} fill="#fffbeb" stroke="#92400e" strokeWidth={5} />
-        <text x={tower.x} y={frameY + FRAME / 2 + 2} fontSize={38} textAnchor="middle" dominantBaseline="central">
-          {tower.concept.emoji}
-        </text>
+        {/* förstoras kring ramens nederkant (står kvar på lådorna) */}
+        <g
+          transform={
+            artScale !== 1
+              ? `translate(${tower.x} ${frameY + FRAME}) scale(${artScale}) translate(${-tower.x} ${-(frameY + FRAME)})`
+              : undefined
+          }
+        >
+          <rect x={tower.x - FRAME / 2} y={frameY} width={FRAME} height={FRAME} rx={8} fill="#fffbeb" stroke="#92400e" strokeWidth={5} />
+          <text x={tower.x} y={frameY + FRAME / 2 + 2} fontSize={46} textAnchor="middle" dominantBaseline="central">
+            {tower.concept.emoji}
+          </text>
+        </g>
       </motion.g>
     </motion.g>
   );

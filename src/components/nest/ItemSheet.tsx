@@ -3,7 +3,9 @@ import { X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { NestItem } from "../../types";
 import { cn } from "../../lib/cn";
+import { longestWord } from "../../lib/fit";
 import { wrapTab } from "../../lib/focusTrap";
+import { useElementSize } from "../../hooks/useElementSize";
 import { balanceOf, isOwnedItem } from "../../lib/rewards";
 import { giftCondition } from "../../data/nestItems";
 import { useNest } from "../../stores/useNest";
@@ -62,6 +64,15 @@ export function ItemSheet({ item, onClose, onBuy, onUndo, onReturn, onWish, onSp
   const shop = item.via === "shop";
   const enough = balance >= item.price;
   const showUndo = justBought && bought;
+
+  // Rubrikraden mäts: på en smal mobil (320 px) blir bilden lite mindre och namnet
+  // krymper (högst 20 px, minst 15 px) så att det står på en rad – aldrig "Glödlam-pan".
+  // pr-12 (48) = plats för ✕, gap-3 (12) mellan bilden och texten.
+  const [headRow, { w: headW }] = useElementSize<HTMLDivElement>();
+  const narrow = headW > 0 && headW < 320;
+  const art = narrow ? { box: "h-20 w-24", boxW: 96, w: 88, h: 68 } : { box: "h-24 w-28", boxW: 112, w: 104, h: 80 };
+  const titleW = headW - 48 - art.boxW - 12;
+  const titlePx = headW > 0 ? Math.max(15, Math.min(20, titleW / ((longestWord(item.name) + 1) * 0.6))) : 20;
 
   // Fokus tillbaka dit man var när arket stängs. Ett andra tryck på kortet som
   // öppnade arket får inte trycka på arkets knappar.
@@ -265,23 +276,30 @@ export function ItemSheet({ item, onClose, onBuy, onUndo, onReturn, onWish, onSp
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 380, damping: 32 }}
-        className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-xl rounded-t-3xl bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-10px_30px_-10px_rgb(0_0_0/0.35)] dark:bg-zinc-800"
+        // Liggande: bladet ligger i spalten till höger, så att förhandsvisningen i scenen syns.
+        // Aldrig högre än skärmen (knapparna går alltid att nå).
+        className="fixed inset-x-0 bottom-0 z-50 mx-auto max-h-[calc(100dvh-0.5rem)] w-full max-w-xl overflow-y-auto overscroll-contain rounded-t-3xl bg-white px-4 pb-[max(1rem,var(--safe-b))] pt-4 shadow-[0_-10px_30px_-10px_rgb(0_0_0/0.35)] dark:bg-zinc-800 side:inset-x-auto side:right-[max(0.75rem,var(--safe-r))] side:bottom-[max(0.75rem,var(--safe-b))] side:max-h-[calc(100dvh-1.5rem)] side:w-[min(26rem,50%)] side:rounded-3xl side:pb-4"
       >
-        <div className="flex items-start gap-3 pr-12">
+        <div ref={headRow} className="flex items-start gap-3 pr-12">
           <span
             ref={artRef}
-            className="grid h-24 w-28 shrink-0 place-items-center rounded-2xl bg-amber-50 dark:bg-zinc-900/60"
+            className={cn("grid shrink-0 place-items-center rounded-2xl bg-amber-50 dark:bg-zinc-900/60", art.box)}
           >
-            <ItemThumb item={item} w={104} h={80} ghost={!owned && !shop} />
+            <ItemThumb item={item} w={art.w} h={art.h} ghost={!owned && !shop} />
           </span>
           <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black leading-tight">{item.name}</h2>
+            {/* Långt namn: titeln krymper (titlePx), avstavas som sista utväg och 🔊 hamnar på
+                nästa rad – aldrig under Stäng. mr-4 på 🔊: minst 20 px luft till ✕ även när 🔊 står
+                längst till höger (luften tas inte från namnet) */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h2 lang="sv" className="word-fit max-w-full font-black leading-tight" style={{ fontSize: titlePx }}>
+                {item.name}
+              </h2>
               <button
                 type="button"
                 onClick={onSpeak}
                 aria-label={`Lyssna: ${item.name}`}
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-purple-100 text-xl outline-none focus-visible:ring-4 focus-visible:ring-purple-400 dark:bg-purple-900/50"
+                className="mr-4 grid h-12 w-12 shrink-0 place-items-center rounded-full bg-purple-100 text-xl outline-none focus-visible:ring-4 focus-visible:ring-purple-400 dark:bg-purple-900/50"
               >
                 🔊
               </button>

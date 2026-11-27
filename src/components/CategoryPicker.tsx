@@ -31,7 +31,7 @@ export function CategoryPicker({
   const adv = clearedIn(ADVENTURE.id);
 
   return (
-    <main className="mx-auto max-w-xl p-6">
+    <main className="mx-auto max-w-xl p-6 pb-[max(1.5rem,var(--safe-b))] md:max-w-2xl lg:max-w-4xl">
       <div className="mb-6 flex items-center gap-3">
         {onBack ? <BackButton onClick={onBack} /> : <BackButton to="/dashboard" />}
         <h1 className="text-2xl font-bold">{title}</h1>
@@ -54,7 +54,7 @@ export function CategoryPicker({
         </motion.span>
         <div className="flex-1">
           <div className="text-xl font-black">Äventyret</div>
-          <div className="text-sm opacity-90">
+          <div className="text-sm opacity-90 md:text-base">
             {LEVEL_COUNT} nivåer genom alla kategorier – blir svårare steg för steg
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/30">
@@ -67,7 +67,7 @@ export function CategoryPicker({
       </motion.button>
 
       <p className="mb-3 font-semibold text-zinc-600 dark:text-zinc-400">Fri träning – välj kategori:</p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:gap-4">
         {CATEGORIES.map((c, i) => (
           <motion.button
             key={c.id}
@@ -79,9 +79,9 @@ export function CategoryPicker({
             whileTap={{ scale: 0.93 }}
             className={cn("flex flex-col items-center gap-1 rounded-3xl border-2 p-4 shadow-lg", c.tint)}
           >
-            <span className="text-4xl">{c.emoji}</span>
-            <span className="text-sm font-bold">{c.name}</span>
-            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            <span className="text-4xl md:text-5xl">{c.emoji}</span>
+            <span className="word-fit text-center text-sm font-bold md:text-base">{c.name}</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 md:text-sm">
               {clearedIn(c.id)}/{LEVEL_COUNT}
             </span>
           </motion.button>

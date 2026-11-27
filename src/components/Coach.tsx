@@ -32,7 +32,12 @@ export function Coach({ event }: { event: CoachEvent | null }) {
   }, [event]);
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-30 flex items-end gap-2 rtl:left-4 rtl:right-auto" dir="ltr">
+    // Ovanför hemindikatorn och notchen. På en liggande mobil finns ingen ledig
+    // hörna (svaren fyller högerspalten) – där syns jublet i kombo-räknaren i stället.
+    <div
+      className="pointer-events-none fixed bottom-[max(1rem,var(--safe-b))] right-[max(1rem,var(--safe-r))] z-30 flex items-end gap-2 rtl:left-[max(1rem,var(--safe-l))] rtl:right-auto short:hidden"
+      dir="ltr"
+    >
       <AnimatePresence>
         {msg && (
           <motion.div
@@ -56,7 +61,7 @@ export function Coach({ event }: { event: CoachEvent | null }) {
               : {}
         }
         transition={{ duration: 0.5 }}
-        className="text-5xl drop-shadow"
+        className="text-5xl drop-shadow low:text-4xl"
         aria-hidden
       >
         <Mascot mood="still" only={["hat"]} plain={!hatInGames} />

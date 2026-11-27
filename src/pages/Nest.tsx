@@ -42,7 +42,8 @@ import {
 const MODES: { id: NestMode; label: string; icon: string }[] = [
   { id: "titta", label: "Titta", icon: "👀" },
   { id: "pynta", label: "Pynta", icon: "🎨" },
-  { id: "bod", label: "Stjärnboden", icon: "🌟" },
+  // mjukt bindestreck: på en smal mobil "Stjärn-/boden" på två rader i stället för att klippas
+  { id: "bod", label: "Stjärn\u00ADboden", icon: "🌟" },
 ];
 
 /** Det senaste köpet, så att Ångra kan ställa allt som det var (även önskan). */
@@ -80,6 +81,7 @@ export default function Nest() {
   const modeBox = useRef<HTMLDivElement>(null);
   const drawerBox = useRef<HTMLDivElement>(null);
   const focusModes = useRef(false); // introt är klart: fokus till lägesväljaren
+  const revealDrawer = useRef(false); // barnet bytte till Pynta/Stjärnboden: visa lådans kort
   const lastBuy = useRef<LastBuy | null>(null);
   const lineTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(lineTimer.current), []);
@@ -122,8 +124,20 @@ export default function Nest() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedId]);
 
+  // Nytt läge: lådans första kort rullas fram ovanför menyn (liten mobil och liggande
+  // mobil – annars syns bara flikarna och barnet vet inte att sidan går att rulla).
+  // "nearest": står korten redan i bild (surfplatta) rör sig ingenting.
+  useEffect(() => {
+    if (!revealDrawer.current) return;
+    revealDrawer.current = false;
+    drawerBox.current
+      ?.querySelector<HTMLElement>("[role='tabpanel'] li, [role='tabpanel'] > p")
+      ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
+  }, [mode]);
+
   const switchMode = (m: NestMode) => {
     sceneRef.current?.quiet(); // Tittas sekvenser (kulramen, globen …) pratar inte över nästa läge
+    revealDrawer.current = m !== "titta" && m !== mode;
     setModeChoice(m);
     setSelectedId(null);
     setSheetId(null);
@@ -283,10 +297,18 @@ export default function Nest() {
   };
 
   const modes = MODES.filter((m) => m.id !== "bod" || shopOn);
+  const wishText = wishItem && (
+    <>
+      💛 {wishItem.name} –{" "}
+      <span dir="ltr">
+        {Math.min(balance, wishItem.price)} av {wishItem.price}
+      </span>
+    </>
+  );
 
   return (
     <MotionConfig reducedMotion="user">
-      <main dir="ltr" className="mx-auto max-w-3xl px-3 pb-28 pt-4 sm:px-6 sm:pt-6">
+      <main dir="ltr" className="mx-auto max-w-3xl px-3 pb-nav pt-4 sm:px-6 sm:pt-6 side:max-w-6xl short:pt-2">
         <header className="flex items-center gap-3">
           <BackButton to="/dashboard" />
           <h1 className="text-2xl font-black">Nabus bo</h1>
@@ -310,17 +332,15 @@ export default function Nest() {
           )}
         </header>
 
-        {/* Önskan syns bara här i boet */}
+        {/* Önskan syns bara här i boet (liggande: i spalten bredvid scenen) */}
         {wishItem && (
-          <p className="mt-2 text-center text-sm font-bold text-yellow-800 dark:text-yellow-200">
-            💛 {wishItem.name} –{" "}
-            <span dir="ltr">
-              {Math.min(balance, wishItem.price)} av {wishItem.price}
-            </span>
+          <p className="mt-2 text-center text-sm font-bold text-yellow-800 side:hidden dark:text-yellow-200">
+            {wishText}
           </p>
         )}
 
-        <div ref={sceneBox} className="mt-3 scroll-mt-3">
+        <div className="nest-layout">
+        <div ref={sceneBox} className="nest-scene mt-3 scroll-mt-3">
           <NestScene
             ref={sceneRef}
             mode={mode}
@@ -334,6 +354,12 @@ export default function Nest() {
           />
         </div>
 
+        <div className="min-w-0">
+        {wishItem && (
+          <p className="mt-3 hidden text-center text-sm font-bold text-yellow-800 side:block dark:text-yellow-200">
+            {wishText}
+          </p>
+        )}
         {!introDone ? (
           <NestIntro welcome={welcome} shopOn={shopOn} onDone={dressUp} />
         ) : (
@@ -343,7 +369,7 @@ export default function Nest() {
               role="group"
               aria-label="Vad vill du göra?"
               className={cn(
-                "mx-auto mt-4 grid max-w-xl gap-1.5 rounded-full bg-white/80 p-1.5 shadow dark:bg-zinc-800/80",
+                "mx-auto mt-4 grid max-w-xl gap-1.5 rounded-[1.75rem] bg-white/80 p-1.5 shadow dark:bg-zinc-800/80 side:mt-3",
                 modes.length === 3 ? "grid-cols-3" : "grid-cols-2"
               )}
             >
@@ -356,14 +382,18 @@ export default function Nest() {
                     aria-pressed={on}
                     onClick={() => switchMode(m.id)}
                     className={cn(
-                      "flex min-h-14 min-w-0 items-center justify-center gap-1 rounded-full px-1.5 text-[13px] font-bold outline-none transition-colors focus-visible:ring-4 focus-visible:ring-purple-400 sm:gap-1.5 sm:px-2 sm:text-base",
+                      // Smal mobil och spalten bredvid scenen (liggande, side:): ikonen över texten,
+                      // så att "Stjärnboden" ryms på en rad utan att brytas
+                      "flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 rounded-3xl px-1 py-1 text-sm font-bold outline-none transition-colors focus-visible:ring-4 focus-visible:ring-purple-400 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-base side:flex-col side:gap-0.5 short:text-sm",
                       on ? "bg-purple-500 text-white shadow" : "text-zinc-600 dark:text-zinc-300"
                     )}
                   >
-                    <span aria-hidden className="text-lg leading-none sm:text-xl">
+                    <span aria-hidden className="text-lg leading-none sm:text-xl short:text-lg">
                       {m.icon}
                     </span>
-                    {m.label}
+                    <span lang="sv" className="min-w-0 text-center leading-tight">
+                      {m.label}
+                    </span>
                   </button>
                 );
               })}
@@ -391,6 +421,8 @@ export default function Nest() {
             </div>
           </>
         )}
+        </div>
+        </div>
 
         <p className="sr-only" role="status" aria-live="polite">
           {live}

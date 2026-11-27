@@ -37,9 +37,11 @@ export const capitalize = (s: string): string => (s ? s[0].toLocaleUpperCase("sv
 
 /** "Ellas klistermärkesbok", "Lukas klistermärkesbok" (s/x/z får inget extra s), annars "Min …". */
 export function bookTitle(name: string): string {
+  // Mjuka bindestreck (\u00AD): på en smal skärm bryts ordet vid lederna
+  const book = "klister\u00ADmärkes\u00ADbok";
   const n = name.trim();
-  if (!n) return "Min klistermärkesbok";
-  return /[sxz]$/i.test(n) ? `${n} klistermärkesbok` : `${n}s klistermärkesbok`;
+  if (!n) return `Min ${book}`;
+  return /[sxz]$/i.test(n) ? `${n} ${book}` : `${n}s ${book}`;
 }
 
 // ── Uppläsning och etiketter ────────────────────────────────────────────

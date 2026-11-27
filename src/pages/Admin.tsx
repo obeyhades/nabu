@@ -6,6 +6,7 @@ import { LEVELS } from "../data/levels";
 import { LANGUAGES } from "../data/languages";
 import { DEFAULT_WEAR, NEST_ITEMS } from "../data/nestItems";
 import { STICKER_IDS, TOFU_RISK, TOTAL_SLOTS } from "../data/stickers";
+import { BackButton } from "../components/BackButton";
 import { Button } from "../components/Button";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { Mascot } from "../components/Mascot";
@@ -150,7 +151,7 @@ export default function Admin() {
   // ── PIN-spärr ──────────────────────────────────────────
   if (!ok) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
+      <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
         <div className="text-6xl">🔒</div>
         <div>
           <h1 className="text-2xl font-bold">Föräldrar</h1>
@@ -188,7 +189,7 @@ export default function Admin() {
             Lås upp
           </Button>
         </form>
-        <Link to="/dashboard" className="text-sm text-zinc-400">
+        <Link to="/dashboard" className="inline-flex min-h-11 items-center px-3 text-sm text-zinc-400">
           ← Tillbaka
         </Link>
       </main>
@@ -216,9 +217,7 @@ export default function Admin() {
   return (
     <main className="mx-auto max-w-xl space-y-4 p-6 pb-16">
       <div className="mb-2 flex items-center gap-3">
-        <Link to="/dashboard" className="text-zinc-400" aria-label="Tillbaka">
-          ←
-        </Link>
+        <BackButton to="/dashboard" />
         <h1 className="text-2xl font-bold">Föräldrar &amp; admin</h1>
       </div>
 
@@ -255,7 +254,7 @@ export default function Admin() {
           <Stat label="Saker i boet" value={`${itemCount} / ${NEST_ITEMS.length}`} />
         </div>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-          <Link to="/collection" className="text-sm font-semibold text-purple-600 dark:text-purple-300">
+          <Link to="/collection" className="inline-flex min-h-11 items-center text-sm font-semibold text-purple-600 dark:text-purple-300">
             Se detaljerad samling →
           </Link>
           <Link to="/stickers" className="text-sm font-semibold text-purple-600 dark:text-purple-300">

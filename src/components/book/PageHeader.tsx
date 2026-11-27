@@ -14,6 +14,8 @@ export type StripGroup = { key: string; band?: Band; filled: boolean[] };
  * Boksidans huvud: tillbaka till indexet, titel och emoji, "{klart} av {alla}",
  * prickremsan (som i Min samling – en prick per plats, grupperad per hylla) och
  * lappen med sidans gåva, som står där från första dagen.
+ * Liggande mobil (short:): allt på en rad (titel – gåvolapp) och remsan under,
+ * så att första raden platser syns ovanför kuvertet.
  */
 export function PageHeader({
   page,
@@ -32,12 +34,16 @@ export function PageHeader({
 }) {
   const what = page.derived ? "spelmärken tända" : "inklistrade";
   return (
-    <header>
-      <div className="flex items-center gap-3">
+    <header className="short:flex short:flex-wrap short:items-center short:gap-x-3">
+      <div className="flex items-center gap-3 short:min-w-0 short:flex-1">
         <BackButton to="/stickers" />
         <div className="min-w-0 flex-1">
           {/* tabIndex -1: sidan kan ta emot fokus efter en bläddring (annars hamnar det på <body>) */}
-          <h1 tabIndex={-1} data-page-heading className="flex items-center gap-2 text-2xl font-black leading-tight outline-none">
+          <h1
+            tabIndex={-1}
+            data-page-heading
+            className="flex items-center gap-2 text-2xl font-black leading-tight outline-none short:text-xl"
+          >
             <span aria-hidden className="shrink-0">
               {page.emoji}
             </span>
@@ -52,7 +58,11 @@ export function PageHeader({
         </div>
       </div>
 
-      <div role="img" aria-label={`${done} av ${total} ${what}`} className="mt-3 flex gap-2">
+      <div
+        role="img"
+        aria-label={`${done} av ${total} ${what}`}
+        className="mt-3 flex gap-2 short:order-last short:mt-1.5 short:w-full"
+      >
         {strip.map((g) => (
           <div key={g.key} className="flex gap-0.5" style={{ flex: g.filled.length }}>
             {g.filled.map((on, i) => (
@@ -74,7 +84,7 @@ export function PageHeader({
         (complete ? (
           <Link
             to="/nest"
-            className="mt-3 inline-flex min-h-12 max-w-full items-center gap-2 rounded-full bg-emerald-50 py-1.5 pl-3 pr-4 text-sm font-bold text-emerald-800 shadow-sm ring-1 ring-emerald-200 outline-none motion-safe:transition motion-safe:active:scale-95 focus-visible:ring-4 focus-visible:ring-purple-400 dark:bg-emerald-400/10 dark:text-emerald-200 dark:ring-emerald-300/30"
+            className="mt-3 inline-flex min-h-12 max-w-full items-center gap-2 rounded-full bg-emerald-50 py-1.5 pl-3 pr-4 text-sm font-bold text-emerald-800 shadow-sm ring-1 ring-emerald-200 outline-none motion-safe:transition motion-safe:active:scale-95 focus-visible:ring-4 focus-visible:ring-purple-400 dark:bg-emerald-400/10 dark:text-emerald-200 dark:ring-emerald-300/30 short:mt-0 short:max-w-[50%]"
           >
             <span aria-hidden>✓</span>
             <GiftArt item={gift} size={22} />
@@ -83,7 +93,7 @@ export function PageHeader({
             </span>
           </Link>
         ) : (
-          <p className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 py-1.5 pl-3 pr-4 text-sm font-semibold shadow-sm ring-1 ring-black/5 dark:bg-zinc-800/85 dark:ring-white/10">
+          <p className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full bg-white/85 py-1.5 pl-3 pr-4 text-sm font-semibold shadow-sm ring-1 ring-black/5 dark:bg-zinc-800/85 dark:ring-white/10 short:mt-0 short:max-w-[50%]">
             <span className="shrink-0">Klar sida →</span>
             <GiftArt item={gift} size={22} />
             <span className="min-w-0">{giftTag(gift)}</span>

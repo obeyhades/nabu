@@ -9,7 +9,8 @@ import { SpeakableText } from "../components/SpeakableText";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { LevelPicker } from "../components/LevelPicker";
 import { GameHeader } from "../components/GameHeader";
-import { QuestionStage, BigPicture } from "../components/QuestionStage";
+import { QuestionStage, BigPicture, RoundCount } from "../components/QuestionStage";
+import { FitGrid } from "../components/FitGrid";
 import { ChoiceButton } from "../components/ChoiceButton";
 import { choiceState } from "../lib/choice";
 import { Coach } from "../components/Coach";
@@ -19,9 +20,17 @@ import { Button } from "../components/Button";
 import { difficulty } from "../lib/difficulty";
 import { shuffle } from "../lib/shuffle";
 import { cn } from "../lib/cn";
+import { fitText } from "../lib/fit";
+import { GAME_MAIN, PROMPT_TEXT } from "../lib/layout";
 import type { Concept, Level, PlayCategory } from "../types";
 
 type QuizQ = { concept: Concept; options: Concept[] };
+
+/** Det stora ordet krymper med längden (καμηλοπάρδαλη, восемнадцать) och avstavas som sista utväg. */
+const BIG_WORD = [
+  [7, "text-[clamp(1.75rem,9vw,2.25rem)] md:text-5xl"],
+  [10, "text-[clamp(1.5rem,7.5vw,2rem)] md:text-4xl"],
+] as const;
 
 /**
  * Ord & bilder: bläddra bland orden (lär), sen ett quiz "vilken bild är …".
@@ -142,7 +151,7 @@ export default function FlashcardsGame() {
   // Quiz: vilken bild?
   if (phase === "quiz" && q) {
     return (
-      <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
+      <main dir={getLanguage(lang).dir} className={GAME_MAIN}>
         <GameHeader
           onBack={() => setLevel(null)}
           progress={qIndex / quiz.length}
@@ -150,37 +159,42 @@ export default function FlashcardsGame() {
           gold={gold}
           combo={lesson.combo}
         />
-        <QuestionStage qkey={`q${qIndex}`}>
-          <p className="font-semibold text-zinc-600 dark:text-zinc-300">Vilken bild är …</p>
-          {d.help === "none" ? (
-            <SpeakableText
-              text="🔊"
-              conceptId={q.concept.id}
-              className="rounded-full bg-white px-5 py-3 text-3xl shadow dark:bg-zinc-800"
-            />
-          ) : (
-            <SpeakableText
-              text={qLabel}
-              conceptId={q.concept.id}
-              className="text-4xl font-bold text-purple-600 dark:text-purple-300"
-            />
-          )}
-          <div className={cn("grid w-full gap-3", q.options.length <= 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3")}>
+        <QuestionStage qkey={`q${qIndex}`} split>
+          <div className="stage-prompt">
+            <p className={PROMPT_TEXT}>Vilken bild är …</p>
+            {d.help === "none" ? (
+              <SpeakableText
+                text="🔊"
+                conceptId={q.concept.id}
+                className="rounded-full bg-white px-5 py-3 text-3xl shadow dark:bg-zinc-800"
+              />
+            ) : (
+              <SpeakableText
+                text={qLabel}
+                lang={lang}
+                conceptId={q.concept.id}
+                className={cn(
+                  "max-w-full font-bold text-purple-600 dark:text-purple-300",
+                  fitText(qLabel, BIG_WORD, "text-2xl")
+                )}
+              />
+            )}
+          </div>
+          {/* 5 bilder blir 3 + 2 (aldrig en ensam femte under skärmkanten) */}
+          <FitGrid count={q.options.length}>
             {q.options.map((opt, i) => (
               <ChoiceButton
                 key={opt.id}
                 index={i}
                 state={choiceState(opt.id, picked, q.concept.id)}
                 onClick={() => answer(opt)}
-                className="aspect-square text-6xl"
+                className="text-[calc(var(--tile)*0.5)]"
               >
                 {opt.emoji}
               </ChoiceButton>
             ))}
-          </div>
-          <span dir="ltr" className="font-semibold text-zinc-500 dark:text-zinc-400">
-            {qIndex + 1} / {quiz.length}
-          </span>
+          </FitGrid>
+          <RoundCount n={qIndex + 1} of={quiz.length} />
         </QuestionStage>
         <Coach event={coach.event} />
       </main>
@@ -190,30 +204,34 @@ export default function FlashcardsGame() {
   // Bläddra & lär (skydd som i de andra spelen: inget kort → tillbaka till nivåerna)
   if (!current) {
     return (
-      <main className="mx-auto max-w-xl p-6">
+      <main className={GAME_MAIN}>
         <GameHeader onBack={() => setLevel(null)} progress={0} level={level} gold={gold} />
       </main>
     );
   }
   const isLast = index === concepts.length - 1;
+  const last = concepts.length - 1;
   return (
-    <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
+    <main dir={getLanguage(lang).dir} className={GAME_MAIN}>
       <GameHeader onBack={() => setLevel(null)} progress={(index + 1) / concepts.length / 2} level={level} gold={gold} />
 
-      <QuestionStage qkey={`b${index}`}>
-        <div className="w-full rounded-3xl bg-white p-10 text-center shadow-xl dark:bg-zinc-800">
-          <BigPicture>{current.emoji}</BigPicture>
+      {/* Liggande mobil: kortet till vänster, bläddringen till höger */}
+      <QuestionStage qkey={`b${index}`} className="short:flex-row short:gap-6">
+        <div className="w-full rounded-3xl bg-white p-6 text-center shadow-xl sm:p-10 dark:bg-zinc-800 short:w-auto short:min-w-64 short:max-w-[55%] short:p-4">
+          <BigPicture className="text-8xl short:text-7xl md:text-9xl">{current.emoji}</BigPicture>
           <SpeakableText
             text={label}
+            lang={lang}
             conceptId={current.id}
-            className="mt-4 text-4xl font-bold text-purple-600 dark:text-purple-300"
+            className={cn("mt-4 max-w-full font-bold text-purple-600 dark:text-purple-300 short:mt-2", fitText(label, BIG_WORD, "text-2xl"))}
           />
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 short:flex-col short:gap-3">
           <Button
             disabled={index === 0}
-            onClick={() => setIndex((i) => i - 1)}
+            onClick={() => setIndex(Math.max(0, index - 1))}
+            aria-label="Förra kortet"
             className="bg-white text-purple-600 dark:bg-zinc-800 dark:text-purple-300"
           >
             <span className="inline-block rtl:rotate-180">←</span>
@@ -226,7 +244,8 @@ export default function FlashcardsGame() {
               Visa vad du kan! ⭐
             </Button>
           ) : (
-            <Button onClick={() => setIndex((i) => i + 1)} className="bg-purple-500 text-white">
+            // Steget räknas från kortet som syns (inte i => i + 1): ett dubbeltryck hoppar aldrig förbi sista kortet
+            <Button onClick={() => setIndex(Math.min(last, index + 1))} className="bg-purple-500 text-white">
               Nästa <span className="inline-block rtl:rotate-180">→</span>
             </Button>
           )}

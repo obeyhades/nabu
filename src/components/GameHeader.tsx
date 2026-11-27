@@ -25,7 +25,7 @@ export function GameHeader({
 }) {
   const info = level ? getLevel(level) : null;
   return (
-    <div className="flex items-center gap-3 pt-2" dir="ltr">
+    <div className="flex items-center gap-3 pt-2 short:pt-1" dir="ltr">
       <BackButton onClick={onBack} />
       {info && (
         <span
@@ -40,7 +40,10 @@ export function GameHeader({
           {gold ? "🥇" : info.icon} {info.level}
         </span>
       )}
-      <ProgressBar value={progress} />
+      {/* framstegen krymper aldrig bort helt (smal mobil med kombo och räknare) */}
+      <div className="min-w-12 flex-1">
+        <ProgressBar value={progress} />
+      </div>
       <AnimatePresence>
         {combo >= 2 && (
           <motion.span

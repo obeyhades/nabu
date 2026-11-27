@@ -451,7 +451,12 @@ function BookPageView({ page }: { page: BookPage }) {
 
   return (
     <MotionConfig reducedMotion="user">
-      <main ref={main} dir="ltr" className={cn("mx-auto max-w-3xl px-2 pt-6 sm:px-6", hasTray ? "pb-[190px]" : "pb-28")}>
+      {/* Liggande mobil: tätare överkant (rubriken på en rad, se PageHeader) */}
+      <main
+        ref={main}
+        dir="ltr"
+        className={cn("mx-auto max-w-3xl px-2 pt-6 sm:px-6 short:pt-2", hasTray ? "pb-nav-tray" : "pb-nav")}
+      >
         <div className="px-2 sm:px-0">
           <PageHeader page={page} done={count.done} total={count.total} strip={strip} gift={gift} complete={complete} />
         </div>
@@ -472,7 +477,7 @@ function BookPageView({ page }: { page: BookPage }) {
             onDragEnd={onSwipeEnd}
             style={{ touchAction: "pan-y" }}
             className={cn(
-              "mt-4 space-y-3 rounded-3xl p-2 shadow-inner ring-1 ring-black/5 sm:p-4 dark:ring-white/10",
+              "mt-4 space-y-3 rounded-3xl p-2 shadow-inner ring-1 ring-black/5 sm:p-4 dark:ring-white/10 short:mt-2 short:space-y-2 short:p-2",
               `scene-${page.scene}`
             )}
           >
@@ -535,7 +540,7 @@ function BookPageView({ page }: { page: BookPage }) {
             className={cn(
               // ovanför kuvertet, på andra sidan om platsen; på en liggande telefon högst upp
               // (platsen centreras då i den låga skärmen och bubblan skulle annars täcka den)
-              "pointer-events-none fixed bottom-[184px] z-30 max-w-[75%] [@media(max-height:500px)]:bottom-auto [@media(max-height:500px)]:top-2",
+              "pointer-events-none fixed bottom-[calc(var(--nav-space)+var(--tray-h)+12px)] z-30 max-w-[75%] [@media(max-height:500px)]:bottom-auto [@media(max-height:500px)]:top-2",
               hintSide === "right" ? "right-2" : "left-2"
             )}
           >

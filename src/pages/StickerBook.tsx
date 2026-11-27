@@ -105,19 +105,25 @@ export default function StickerBook() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <main dir="ltr" className="mx-auto max-w-3xl px-4 pb-24 pt-6 sm:px-6">
+      {/* Liggande surfplatta (lg:): bredare bok med fyra sidor per rad, och Nabus hälsning
+          bredvid kuvertet – annars syns bara en rad sidor ovanför menyn. Liggande mobil (short:):
+          hälsningen och kuvertet bredvid varandra och tätare, så att första sidan syns direkt. */}
+      <main dir="ltr" className="mx-auto max-w-3xl px-4 pb-nav pt-6 sm:px-6 lg:max-w-5xl short:pt-3">
         <header className="flex items-start gap-3">
           <BackButton to="/dashboard" />
           {/* Omslaget: rygg, sydd kant och avataren som ett klistermärke */}
-          <div className="relative min-w-0 flex-1 overflow-hidden rounded-3xl bg-gradient-to-br from-purple-500 to-fuchsia-600 py-4 pl-6 pr-4 text-white shadow-lg">
+          <div className="relative min-w-0 flex-1 overflow-hidden rounded-3xl bg-gradient-to-br from-purple-500 to-fuchsia-600 py-4 pl-6 pr-4 text-white shadow-lg short:py-2">
             <span aria-hidden className="absolute inset-y-0 left-0 w-3 bg-black/15" />
             <span aria-hidden className="pointer-events-none absolute inset-y-2 left-5 right-2 rounded-2xl border-2 border-dashed border-white/35" />
             <div className="relative flex items-center gap-3">
-              <span aria-hidden className="sticker shrink-0 text-5xl" style={{ rotate: "-6deg" }}>
+              <span aria-hidden className="sticker shrink-0 text-5xl short:text-4xl" style={{ rotate: "-6deg" }}>
                 {avatar}
               </span>
               <div className="min-w-0">
-                <h1 className="text-xl font-black leading-tight [overflow-wrap:anywhere] sm:text-2xl">{bookTitle(name)}</h1>
+                {/* Bryts bara vid lederna (mjuka bindestreck i bookTitle), aldrig "klistermärke/sbok" */}
+                <h1 lang="sv" className="text-xl font-black leading-tight break-words hyphens-manual sm:text-2xl">
+                  {bookTitle(name)}
+                </h1>
                 <p className="mt-0.5 text-sm font-medium text-white/90">
                   <span dir="ltr">{placed}</span> {placed === 1 ? "klistermärke inklistrat" : "klistermärken inklistrade"}
                 </p>
@@ -126,15 +132,16 @@ export default function StickerBook() {
           </div>
         </header>
 
+        <div className="lg:grid lg:grid-cols-2 lg:items-stretch lg:gap-x-4 lg:[&>:only-child]:col-span-2 short:grid short:grid-cols-2 short:items-stretch short:gap-x-3 short:[&>:only-child]:col-span-2">
         {intro && !intro.seen && (
           <section
             aria-label="Välkommen till boken"
-            className="mt-5 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-200 dark:bg-zinc-900/80 dark:ring-zinc-700"
+            className="mt-5 rounded-3xl bg-amber-50 p-4 ring-1 ring-amber-200 dark:bg-zinc-900/80 dark:ring-zinc-700 short:mt-3 short:p-3"
           >
-            <NabuSays>
-              <p className="leading-snug">{introText}</p>
+            <NabuSays size="text-5xl short:text-4xl">
+              <p className="leading-snug short:text-sm">{introText}</p>
             </NabuSays>
-            <div className="mt-2 flex items-center justify-end gap-3">
+            <div className="mt-2 flex items-center justify-end gap-3 short:mt-1">
               <button
                 type="button"
                 onClick={() => speak(introText, "sv")}
@@ -157,7 +164,7 @@ export default function StickerBook() {
         {oldest && oldestPage && (
           <Link
             to={`/stickers/${oldestPage}?place=${encodeURIComponent(oldest)}`}
-            className="mt-5 flex min-h-[80px] items-center gap-3 rounded-3xl bg-amber-100 p-3 pr-4 shadow ring-1 ring-amber-300 outline-none motion-safe:transition motion-safe:active:scale-[0.98] focus-visible:ring-4 focus-visible:ring-purple-400 dark:bg-amber-400/15 dark:ring-amber-300/30"
+            className="mt-5 flex min-h-[80px] items-center gap-3 rounded-3xl bg-amber-100 short:mt-3 p-3 pr-4 shadow ring-1 ring-amber-300 outline-none motion-safe:transition motion-safe:active:scale-[0.98] focus-visible:ring-4 focus-visible:ring-purple-400 dark:bg-amber-400/15 dark:ring-amber-300/30"
           >
             <EnvelopeArt ids={tray.slice(0, 3)} owned={owned} />
             <span className="min-w-0 flex-1 text-lg font-bold leading-tight">
@@ -166,6 +173,7 @@ export default function StickerBook() {
             <ChevronRight size={28} aria-hidden className="shrink-0 text-amber-700 dark:text-amber-300" />
           </Link>
         )}
+        </div>
 
         <Group title="Ord" icon="📚">
           {WORD_PAGES.map(tile)}
@@ -191,7 +199,7 @@ export default function StickerBook() {
               <ChevronDown size={22} aria-hidden className={cn("ml-auto motion-safe:transition-transform", moreLangs && "rotate-180")} />
             </button>
             {moreLangs && (
-              <div id="fler-sprak" className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div id="fler-sprak" className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {hiddenPosters.map(tile)}
               </div>
             )}
@@ -245,7 +253,7 @@ function Group({ title, icon, children }: { title: string; icon: string; childre
         <span aria-hidden>{icon}</span>
         {title}
       </h2>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{children}</div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{children}</div>
     </section>
   );
 }
@@ -301,7 +309,7 @@ function PageTile({
         {waiting > 0 && (
           <span
             aria-hidden
-            className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-xs font-bold text-amber-700 shadow-sm dark:bg-zinc-900/80 dark:text-amber-300"
+            className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-xs font-bold text-amber-700 shadow-sm dark:bg-zinc-900/80 dark:text-amber-300 md:text-sm short:text-xs"
           >
             ✉️ <span dir="ltr">{waiting}</span>
           </span>
@@ -309,12 +317,12 @@ function PageTile({
         <ProgressRing frac={total ? n / total : 0} done={complete}>
           <TileFace page={page} />
         </ProgressRing>
-        <span aria-hidden className="text-sm font-bold leading-tight">
+        <span aria-hidden className="text-sm font-bold leading-tight md:text-base short:text-sm">
           {page.title}
         </span>
         <span
           aria-hidden
-          className="rounded-full bg-white/70 px-2 text-xs font-semibold text-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-300"
+          className="rounded-full bg-white/70 px-2 text-xs font-semibold text-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-300 md:text-sm short:text-xs"
         >
           <span dir="ltr">
             {n} av {total}
@@ -336,7 +344,7 @@ function TileFace({ page }: { page: BookPage }) {
     );
   }
   return (
-    <span aria-hidden className="text-3xl">
+    <span aria-hidden className="text-3xl md:text-4xl short:text-3xl">
       {page.emoji}
     </span>
   );

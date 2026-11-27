@@ -139,7 +139,7 @@ export function PriceTag({
         <span
           className={cn(
             "rounded-full bg-emerald-100 px-2 py-0.5 font-bold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
-            big ? "text-sm" : "text-[11px]"
+            big ? "text-sm" : "text-xs md:text-sm"
           )}
         >
           ✓ Räcker

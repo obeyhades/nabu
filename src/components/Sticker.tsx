@@ -98,17 +98,21 @@ export function WordBlob({ word, category, lang }: { word: string; category: Cat
   );
 }
 
-/** Sifferord: siffran stort och ordet under (aldrig keycap-emoji). */
+/**
+ * Sifferord: siffran stort och ordet under (aldrig keycap-emoji).
+ * Små märken (under 4rem: platser, kuvertet, vinstskärmen) visar bara siffran –
+ * ordet blev annars 5–7 px och står ändå under märket. (Gäller även Vagn och Pärla.)
+ */
 export function NumberBadge({ n, word, lang }: { n: number; word: string; lang: LangCode }) {
   return (
-    <span className="grid h-[1.05em] w-[1.05em] grid-rows-[1fr_auto] place-items-center rounded-[0.24em] bg-gradient-to-br from-indigo-400 to-violet-500 pb-[0.07em] text-white">
-      <span dir="ltr" className="self-end text-[0.56em] font-black leading-none">
+    <span className="@container grid h-[1.05em] w-[1.05em] grid-rows-[1fr_auto] place-items-center rounded-[0.24em] bg-gradient-to-br from-indigo-400 to-violet-500 pb-[0.07em] text-white">
+      <span dir="ltr" className="self-end text-[0.56em] font-black leading-none @max-[4rem]:self-center">
         {n}
       </span>
       <span
         lang={lang}
         dir={getLanguage(lang).dir}
-        className="max-w-full text-center text-[0.15em] font-bold leading-tight [overflow-wrap:anywhere]"
+        className="max-w-full text-center text-[0.15em] font-bold leading-tight [overflow-wrap:anywhere] @max-[4rem]:hidden"
       >
         {word}
       </span>
@@ -150,7 +154,7 @@ export function LetterTile({
 /** En vagn på Räknetåget: nivåns ikon och räknesättet. */
 export function Wagon({ level }: { level: Level }) {
   return (
-    <span className="relative grid h-[1.05em] w-[1.15em] grid-rows-[1fr_auto]">
+    <span className="@container relative grid h-[1.05em] w-[1.15em] grid-rows-[1fr_auto]">
       <span
         className={cn(
           "mx-[0.03em] grid place-items-center content-center rounded-[0.14em] bg-gradient-to-br py-[0.04em] text-white",
@@ -158,7 +162,7 @@ export function Wagon({ level }: { level: Level }) {
         )}
       >
         <span className="text-[0.4em] leading-none">{LEVELS[level - 1]?.icon}</span>
-        <span dir="ltr" className="whitespace-nowrap text-[0.14em] font-black leading-tight">
+        <span dir="ltr" className="whitespace-nowrap text-[0.14em] font-black leading-tight @max-[4rem]:hidden">
           {WAGON_LABELS[level - 1]}
         </span>
       </span>
@@ -176,7 +180,7 @@ export function Wagon({ level }: { level: Level }) {
 /** En pärla på Pärlbandet: bandets färg, nivåns ikon och "till {hi}". */
 export function Bead({ level }: { level: Level }) {
   return (
-    <span className="grid h-[1.1em] w-[1.05em] grid-rows-[1fr_auto] place-items-center">
+    <span className="@container grid h-[1.1em] w-[1.05em] grid-rows-[1fr_auto] place-items-center">
       <span
         className={cn(
           "relative grid h-[0.8em] w-[0.8em] place-items-center rounded-full bg-gradient-to-br shadow-[inset_-0.04em_-0.06em_0.1em_rgb(0_0_0/0.25)]",
@@ -186,7 +190,7 @@ export function Bead({ level }: { level: Level }) {
         <span className="absolute left-[18%] top-[14%] h-[0.12em] w-[0.18em] rounded-full bg-white/60" />
         <span className="text-[0.4em] leading-none">{LEVELS[level - 1]?.icon}</span>
       </span>
-      <span className="whitespace-nowrap rounded-full bg-white px-[0.4em] text-[0.15em] font-bold leading-snug text-zinc-700">
+      <span className="whitespace-nowrap rounded-full bg-white px-[0.4em] text-[0.15em] font-bold leading-snug text-zinc-700 @max-[4rem]:hidden">
         till <span dir="ltr">{countingMax(level)}</span>
       </span>
     </span>

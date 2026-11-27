@@ -43,21 +43,22 @@ export function Kuvertet({
       role="region"
       aria-label={`Kuvertet, ${total} ${total === 1 ? "klistermärke" : "klistermärken"}`}
       dir="ltr"
-      className="fixed inset-x-0 bottom-[68px] z-30 h-[104px] border-t border-amber-200 bg-amber-50 shadow-[0_-6px_16px_rgb(0_0_0/0.06)] dark:border-zinc-700 dark:bg-zinc-900"
+      // Precis ovanför menyn (var(--nav-space)); lägre på en liggande mobil (--tray-h)
+      className="fixed inset-x-0 bottom-[var(--nav-space)] z-30 h-[var(--tray-h)] border-t border-amber-200 bg-amber-50 shadow-[0_-6px_16px_rgb(0_0_0/0.06)] dark:border-zinc-700 dark:bg-zinc-900"
     >
       {/* kuvertets flik (bara pynt) */}
       <span
         aria-hidden
         className="absolute -top-3 left-1/2 h-3 w-28 -translate-x-1/2 bg-amber-200 [clip-path:polygon(0_100%,50%_0,100%_100%)] dark:bg-zinc-700"
       />
-      <div className="mx-auto flex h-full max-w-3xl items-center gap-3 overflow-x-auto overscroll-x-contain px-3 [scrollbar-width:none]">
+      <div className="mx-auto flex h-full max-w-3xl items-center gap-3 overflow-x-auto overscroll-x-contain pl-[max(0.75rem,var(--safe-l))] pr-[max(0.75rem,var(--safe-r))] [scrollbar-width:none] short:gap-2">
         {canPlaceAll && (
           <button
             type="button"
             data-place-all
             onClick={onPlaceAll}
             aria-label={`Sätt in alla ${here.length} på den här sidan`}
-            className="flex h-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl bg-emerald-500 px-3 text-sm font-bold leading-tight text-white shadow outline-none motion-safe:transition motion-safe:active:scale-95 focus-visible:ring-4 focus-visible:ring-purple-400"
+            className="flex h-20 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl bg-emerald-500 px-3 text-sm font-bold leading-tight text-white shadow outline-none motion-safe:transition motion-safe:active:scale-95 focus-visible:ring-4 focus-visible:ring-purple-400 short:h-16"
           >
             <span aria-hidden className="text-xl leading-none">
               📥
@@ -80,7 +81,7 @@ export function Kuvertet({
           <button
             type="button"
             onClick={onOthers}
-            className="flex h-20 shrink-0 items-center rounded-2xl border-2 border-dashed border-zinc-400 px-3 text-left text-sm font-bold leading-tight text-zinc-700 outline-none motion-safe:transition motion-safe:active:scale-95 focus-visible:ring-4 focus-visible:ring-purple-400 dark:border-zinc-500 dark:text-zinc-200"
+            className="flex h-20 shrink-0 items-center rounded-2xl border-2 border-dashed border-zinc-400 px-3 text-left text-sm font-bold leading-tight text-zinc-700 outline-none motion-safe:transition motion-safe:active:scale-95 focus-visible:ring-4 focus-visible:ring-purple-400 dark:border-zinc-500 dark:text-zinc-200 short:h-16"
           >
             <span>
               <span dir="ltr">{others.length}</span> till andra
@@ -126,7 +127,8 @@ function TrayItem({
       aria-label={`Sätt in ${stickerName(id)}`}
       onClick={() => onPick(id)}
       className={cn(
-        "relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-2xl shadow-sm ring-1 outline-none transition-colors focus-visible:ring-4 focus-visible:ring-purple-400",
+        // Liggande mobil: lägre men lite bredare kort, så att "+ upp till 15" står helt (inte "+ upp till…")
+        "relative flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-2xl shadow-sm ring-1 outline-none transition-colors focus-visible:ring-4 focus-visible:ring-purple-400 md:w-24 short:h-16 short:w-[88px]",
         STICKER_ALIGN,
         lifted
           ? "bg-amber-100 ring-4 ring-amber-400 dark:bg-amber-400/20 dark:ring-amber-300"
@@ -142,14 +144,14 @@ function TrayItem({
         tricky={o?.tricky === 1}
         lang={lang}
         decorative
-        className={cn(stickerSize(id), caption && "-mt-1")}
+        className={cn(stickerSize(id), caption && "-mt-1", "short:text-[2rem]")}
       />
       {caption && (
         <span
           aria-hidden
           lang={caption.lang}
           dir={caption.dir}
-          className="max-w-[74px] truncate text-[11px] font-bold leading-tight text-zinc-700 dark:text-zinc-200"
+          className="word-fit line-clamp-1 max-w-full px-0.5 text-xs font-bold leading-tight text-zinc-700 dark:text-zinc-200 md:text-sm"
         >
           {caption.text}
         </span>

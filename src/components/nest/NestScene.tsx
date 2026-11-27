@@ -665,7 +665,8 @@ export function NestScene({
       aria-label="Nabus bo"
       data-scene
       tabIndex={-1}
-      className="relative mx-auto aspect-[4/3] w-full max-w-xl select-none outline-none"
+      // Bredden styrs av omslaget (.nest-scene i Nest): ryms alltid på höjden
+      className="relative mx-auto aspect-[4/3] w-full select-none outline-none"
       style={sceneStyle}
     >
       {/* Själva trädhålet (allt klipps i bågen) */}

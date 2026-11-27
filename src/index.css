@@ -3,17 +3,233 @@
 /* Klass-baserat mörkt läge: dark:-varianter gäller när <html> har .dark */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Låg skärm (liten mobil, eller Safari med verktygsfälten framme). */
+@custom-variant low (@media (max-height: 680px));
+
+/* Mobil på tvären (låg, liggande skärm): spelen och sidorna får tätare
+   layouter med short: – fråga bredvid svaren, mindre uggla, lägre meny.
+   Registreras efter low: så att short: vinner när båda gäller. */
+@custom-variant short (@media (orientation: landscape) and (max-height: 500px));
+
+/* Liggande och bred nog för två spalter (mobil på tvären och surfplatta):
+   t.ex. boets scen till vänster och lådan till höger (side:). */
+@custom-variant side (@media (orientation: landscape) and (min-width: 560px));
+
+/* ── Mått som flera delar delar på ─────────────────────────
+   --safe-*  skärmens säkra kanter (notch och hemindikator i en installerad PWA,
+             kräver viewport-fit=cover i index.html)
+   --nav-h   menyn längst ner (BottomNav)
+   --tray-h  kuvertet i klistermärkesboken (ligger precis ovanför menyn)
+   --nav-space  allt som menyn tar av skärmen, inklusive hemindikatorn
+   På en liggande mobil krymper menyn och kuvertet så att sidan får plats. */
 :root {
   color-scheme: light;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --nav-h: 68px;
+  --tray-h: 104px;
+  --nav-space: calc(var(--nav-h) + var(--safe-b));
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --nav-h: 52px;
+    --tray-h: 80px;
+  }
+}
+
+html {
+  /* Skyddsnät: inget får ge sidled-scroll (clip skapar ingen scrollbehållare,
+     så position: sticky fungerar som vanligt) */
+  overflow-x: clip;
+  /* Ingen dra-ner-och-ladda-om mitt i en lektion (Android) och ingen gummiband-
+     studs som slåss med dragen i spelen (iOS) */
+  overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: clip;
+  /* notchen i liggande läge (viewport-fit=cover) */
+  padding-left: var(--safe-l);
+  padding-right: var(--safe-r);
+  overscroll-behavior-y: none;
   background: linear-gradient(to bottom, #fefcf6, #f6ecd6);
   color: #27272a;
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
+}
+
+@layer base {
+  /* Snabba tryck: ingen dubbeltryck-zoom (barn trycker ofta två gånger på
+     samma ställe) och ingen länkförhandsvisning/textmarkering vid långtryck.
+     Sätts på kontrollerna själva – touch-action räknas per scrollbehållare.
+     Ligger i base-lagret så att touch-none m.fl. i spelen fortfarande vinner. */
+  a,
+  button,
+  [role="button"],
+  summary {
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input,
+  textarea,
+  select {
+    touch-action: manipulation;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
+/* ── Gemensamma hjälpare för mobil och surfplatta ─────── */
+
+/* Luft under sidans innehåll så att inget hamnar under menyn (och kuvertet). */
+@utility pb-nav {
+  padding-bottom: calc(var(--nav-space) + 2.75rem);
+}
+@utility pb-nav-tray {
+  padding-bottom: calc(var(--nav-space) + var(--tray-h) + 1.125rem);
+}
+/* Spelens nederkant: alltid ovanför hemindikatorn. */
+@utility pb-safe {
+  padding-bottom: max(1rem, var(--safe-b));
+  @media (orientation: landscape) and (max-height: 500px) {
+    padding-bottom: max(0.5rem, var(--safe-b));
+  }
+}
+
+/* Långa ord (ryska, grekiska, svenska sammansättningar) får krympa och
+   avstavas i stället för att flöda ut ur sin ruta. Kräver lang= på elementet
+   eller en förälder för bra avstavning; bryter mitt i ordet bara som sista utväg. */
+@utility word-fit {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+/* Arabiska vokaltecken sticker ut över och under raden: luft där texten klipps
+   (line-clamp/truncate). Medvetet utanför lagren så att det vinner över leading-*. */
+.word-fit:lang(ar) {
+  line-height: 1.7;
+}
+
+/* ── Nabus bo: scenen ryms alltid på höjden ──────────────
+   Stående: scen, lägen och låda under varandra – scenen krymper hellre än att
+   Nabu hamnar under menyn. Liggande (mobil och surfplatta): scenen till vänster
+   (står kvar medan sidan rullar) och lägen/lådan bredvid, så att barnet ser
+   platserna som lyser medan hen väljer i lådan. */
+@layer components {
+  .nest-scene {
+    width: 100%;
+    margin-inline: auto;
+    max-width: max(16rem, min(36rem, calc((100dvh - var(--nav-space) - 12rem) * 4 / 3)));
+  }
+  @media (min-width: 768px) {
+    .nest-scene {
+      max-width: max(16rem, min(42rem, calc((100dvh - var(--nav-space) - 12rem) * 4 / 3)));
+    }
+  }
+  @media (orientation: landscape) and (min-width: 560px) {
+    .nest-layout {
+      display: grid;
+      /* Scenen högst 55 % – lägen och lådan får ~45 % (flikarna och "Stjärnboden" ryms utan att brytas) */
+      grid-template-columns: minmax(0, min(55%, calc((100dvh - var(--nav-space) - 6.5rem) * 4 / 3))) minmax(0, 1fr);
+      column-gap: 1.25rem;
+      align-items: start;
+    }
+    .nest-scene {
+      position: sticky;
+      top: max(0.5rem, var(--safe-t));
+      max-width: none;
+    }
+  }
+}
+
+/* ── Frågeytan i spelen (QuestionStage split, Spåra) ──────
+   Stående: fråga, svar och räknare under varandra.
+   Liggande mobil: frågan till vänster, svaren till höger (hela höjden).
+   .stage-split-side: samma uppdelning även på en liggande surfplatta (Spåra –
+   ritytan blir annars liten när knapparna står under den). */
+@layer components {
+  .stage-split {
+    display: flex;
+    width: 100%;
+    min-height: 0;
+    flex: 1 1 0%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+  .stage-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+  }
+  @media (orientation: landscape) and (max-height: 500px) {
+    .stage-split {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      grid-template-rows: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "prompt answers"
+        "count answers";
+      align-items: center;
+      justify-items: center;
+      column-gap: 1rem;
+      row-gap: 0.25rem;
+      padding-top: 0.5rem;
+    }
+    .stage-split > .stage-prompt {
+      grid-area: prompt;
+      gap: 0.5rem;
+    }
+    .stage-split > .stage-answers {
+      grid-area: answers;
+      align-self: stretch;
+      justify-self: stretch;
+    }
+    .stage-split > .stage-count {
+      grid-area: count;
+    }
+  }
+  @media (orientation: landscape) and (min-width: 560px) and (min-height: 501px) {
+    .stage-split.stage-split-side {
+      display: grid;
+      /* smal vänsterspalt (fråga + knappar), resten till ytan */
+      grid-template-columns: minmax(16rem, 1fr) minmax(0, 2.5fr);
+      grid-template-rows: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "prompt answers"
+        "count answers";
+      align-items: center;
+      justify-items: center;
+      column-gap: 1.5rem;
+      row-gap: 1rem;
+      padding-top: 0.5rem;
+    }
+    .stage-split-side > .stage-prompt {
+      grid-area: prompt;
+    }
+    .stage-split-side > .stage-answers {
+      grid-area: answers;
+      align-self: stretch;
+      justify-self: stretch;
+    }
+    .stage-split-side > .stage-count {
+      grid-area: count;
+    }
+  }
 }
 
 html.dark {
@@ -249,15 +465,16 @@ html.dark .sticker-ghost { filter: brightness(0) invert(1) opacity(0.18); }
   mask-position: 50% 0;
 }
 
-/* Uppvikt hörn på ett klistermärkeskort (vinstskärmens valrad). Kortet behöver position: relative. */
+/* Uppvikt hörn på ett klistermärkeskort (vinstskärmens valrad). Kortet behöver position: relative.
+   Litet nog (0,75rem) för att ordet under – med px-2 – aldrig hamnar under hörnet. */
 .sticker-curl::after {
   content: "";
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 1.1rem;
-  height: 1.1rem;
-  border-top-left-radius: 0.5rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-top-left-radius: 0.375rem;
   pointer-events: none;
   background: linear-gradient(to top left, transparent 50%, #d4d4d8 50%, #fafafa 100%);
 }

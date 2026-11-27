@@ -50,16 +50,18 @@ export function MotivationCard() {
           title={`Nivå ${level} · ${into}/${span} XP till nästa`}
         >
           <LevelRing level={level} frac={frac} />
-          <span className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+          <span className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400 md:text-xs short:text-[11px]">
             Nivå
           </span>
         </div>
       </div>
       <div className="mt-3">
-        <div className="mb-1 flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
+        {/* Surfplatta: lite större, som resten av startsidan (liggande mobil behåller mobilstorleken) */}
+        <div className="mb-1 flex justify-between text-xs text-zinc-500 dark:text-zinc-400 md:text-sm short:text-xs">
           <span>Dagens mål</span>
-          <span>
-            {dayXp} / {dailyGoal} XP
+          {/* Över målet: "30 / 30 XP ✓" (aldrig "240 / 30") – allt XP syns ovanför */}
+          <span dir="ltr" className={goalMet ? "font-semibold text-emerald-600 dark:text-emerald-400" : undefined}>
+            {Math.min(dayXp, dailyGoal)} / {dailyGoal} XP{goalMet ? " ✓" : ""}
           </span>
         </div>
         <ProgressBar value={dailyGoal ? dayXp / dailyGoal : 0} />

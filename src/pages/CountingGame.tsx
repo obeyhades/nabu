@@ -8,7 +8,8 @@ import { useSpeech } from "../hooks/useSpeech";
 import { useLesson } from "../hooks/useLesson";
 import { LevelPicker } from "../components/LevelPicker";
 import { GameHeader } from "../components/GameHeader";
-import { QuestionStage } from "../components/QuestionStage";
+import { QuestionStage, RoundCount } from "../components/QuestionStage";
+import { FitGrid } from "../components/FitGrid";
 import { ChoiceButton } from "../components/ChoiceButton";
 import { choiceState } from "../lib/choice";
 import { Coach } from "../components/Coach";
@@ -17,6 +18,7 @@ import { VictoryScreen } from "../components/VictoryScreen";
 import { difficulty } from "../lib/difficulty";
 import { shuffle } from "../lib/shuffle";
 import { cn } from "../lib/cn";
+import { GAME_MAIN, PROMPT_TEXT } from "../lib/layout";
 import type { Level } from "../types";
 
 const COUNT_CAT = "all"; // räkna har ingen kategori
@@ -148,7 +150,7 @@ export default function CountingGame() {
   const big = current.items.length > 12;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
+    <main className={GAME_MAIN}>
       <GameHeader
         onBack={() => setLevel(null)}
         progress={index / rounds.length}
@@ -157,47 +159,53 @@ export default function CountingGame() {
         combo={lesson.combo}
       />
 
-      <QuestionStage qkey={index}>
-        <p className="text-lg font-semibold text-zinc-600 dark:text-zinc-300">
-          Hur många <span className="text-3xl align-middle">{current.emoji}</span> ser du?
-        </p>
+      <QuestionStage qkey={index} split>
+        <div className="stage-prompt">
+          <p className={cn(PROMPT_TEXT, "text-lg")}>
+            Hur många <span className="text-3xl align-middle">{current.emoji}</span> ser du?
+          </p>
 
-        <div
-          className={cn(
-            "grid gap-1.5 rounded-3xl bg-white p-5 shadow-xl dark:bg-zinc-800",
-            big ? "grid-cols-5 text-3xl" : "grid-cols-4 text-5xl sm:grid-cols-5"
-          )}
-        >
-          {current.items.map((isTarget, i) => (
-            <motion.span
-              key={i}
-              initial={{ scale: 0, rotate: -30 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: i * 0.05, type: "spring", stiffness: 400, damping: 14 }}
-              className="flex items-center justify-center"
-            >
-              {isTarget ? current.emoji : current.other}
-            </motion.span>
-          ))}
+          <div
+            className={cn(
+              "grid gap-1.5 rounded-3xl bg-white p-5 shadow-xl dark:bg-zinc-800 short:p-3",
+              big
+                ? "grid-cols-5 text-3xl low:text-2xl md:text-4xl short:text-2xl"
+                : "grid-cols-4 text-5xl sm:grid-cols-5 low:text-4xl md:text-6xl short:text-4xl"
+            )}
+          >
+            {current.items.map((isTarget, i) => (
+              <motion.span
+                key={i}
+                initial={{ scale: 0, rotate: -30 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ delay: i * 0.05, type: "spring", stiffness: 400, damping: 14 }}
+                className="flex items-center justify-center"
+              >
+                {isTarget ? current.emoji : current.other}
+              </motion.span>
+            ))}
+          </div>
         </div>
 
-        <div className={cn("grid w-full gap-3", current.options.length <= 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4")}>
+        {/* 5 tal blir 3 + 2 och rutorna krymper i höjd: föremålen att räkna stannar i bild */}
+        <FitGrid count={current.options.length} ratio={0.7} min={60} max={160}>
           {current.options.map((opt, i) => (
             <ChoiceButton
               key={opt}
               index={i}
               state={choiceState(opt, picked, current.count)}
               onClick={() => answer(opt)}
-              className={cn("p-6 text-4xl font-black", picked === null && "text-rose-500 dark:text-rose-300")}
+              className={cn(
+                "text-[calc(var(--tile)*0.36)] font-black",
+                picked === null && "text-rose-500 dark:text-rose-300"
+              )}
             >
               {opt}
             </ChoiceButton>
           ))}
-        </div>
+        </FitGrid>
 
-        <span dir="ltr" className="font-semibold text-zinc-500 dark:text-zinc-400">
-          {index + 1} / {rounds.length}
-        </span>
+        <RoundCount n={index + 1} of={rounds.length} />
       </QuestionStage>
       <Coach event={coach.event} />
     </main>

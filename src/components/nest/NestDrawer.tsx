@@ -86,7 +86,9 @@ export function NestDrawer({ variant, tab, onTab, active, onPick, onCancel }: Pr
               tabIndex={on ? 0 : -1}
               onClick={() => onTab(t.id)}
               className={cn(
-                "flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[12px] font-bold leading-tight outline-none transition-colors focus-visible:ring-4 focus-visible:ring-purple-400 sm:flex-row sm:gap-1.5 sm:text-sm",
+                // Ikonen över texten i spalten bredvid scenen (side:) – även på en stor
+                // surfplatta, så att "Möbler & saker" bryts mellan orden, aldrig mitt i
+                "flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 text-xs font-bold leading-tight outline-none transition-colors focus-visible:ring-4 focus-visible:ring-purple-400 sm:flex-row sm:gap-1.5 sm:text-sm side:flex-col side:gap-0.5",
                 on ? "bg-purple-500 text-white shadow" : "text-zinc-600 dark:text-zinc-300"
               )}
             >
@@ -114,22 +116,26 @@ export function NestDrawer({ variant, tab, onTab, active, onPick, onCancel }: Pr
         )}
 
         {items.length === 0 ? (
-          <p className="rounded-3xl bg-white/70 px-4 py-6 text-center text-sm font-semibold text-zinc-500 dark:bg-zinc-800/70 dark:text-zinc-400">
+          <p className="scroll-mb-[calc(var(--nav-space)+0.75rem)] rounded-3xl bg-white/70 px-4 py-6 text-center text-sm font-semibold text-zinc-500 dark:bg-zinc-800/70 dark:text-zinc-400">
             Inga saker här än.{" "}
             {shopOn
               ? "Saker från Stjärnboden och gåvor från boken hamnar här."
               : "Gåvor från klistermärkesboken hamnar här."}
           </p>
         ) : (
-          // Telefon: en rad att bläddra i (scenen syns hela tiden). Större skärm: rutnät.
+          // Telefon: en rad att bläddra i (scenen syns hela tiden). Större skärm och spalten
+          // bredvid scenen (liggande): rutnät med så många kolumner som får plats.
           <ul
             className={cn(
               "-mx-3 flex snap-x scroll-px-3 gap-3 overflow-x-auto px-3 pb-3 pt-1 sm:mx-0 sm:grid sm:overflow-visible sm:px-0",
-              variant === "bod" ? "sm:grid-cols-3 md:grid-cols-4" : "sm:grid-cols-4 md:grid-cols-5"
+              variant === "bod"
+                ? "sm:grid-cols-[repeat(auto-fill,minmax(7rem,1fr))]"
+                : "sm:grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]"
             )}
           >
             {items.map((item) => (
-              <li key={item.id} className="shrink-0 snap-start">
+              // scroll-mb: när lådan rullas fram (nytt läge) hamnar kortet ovanför menyn, inte under den
+              <li key={item.id} className="shrink-0 snap-start scroll-mb-[calc(var(--nav-space)+0.75rem)]">
                 {variant === "pynta" ? (
                   <PyntaCard item={item} where={slotOf(slots, item.id)} on={active === item.id} onPick={onPick} />
                 ) : (
@@ -182,11 +188,13 @@ function PyntaCard({
       )}
     >
       <ItemThumb item={item} w={84} h={52} />
-      <span className="line-clamp-2 text-center text-xs font-bold leading-tight">{item.name}</span>
+      <span lang="sv" className="word-fit line-clamp-2 text-center text-xs font-bold leading-tight md:text-sm">
+        {item.name}
+      </span>
       <span
         aria-hidden
         className={cn(
-          "rounded-full px-2 py-0.5 text-[11px] font-bold",
+          "rounded-full px-2 py-0.5 text-xs font-bold md:text-sm",
           where
             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
             : "bg-zinc-100 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-300"
@@ -230,14 +238,16 @@ function ShopCard({
         </span>
       )}
       <ItemThumb item={item} w={96} h={56} ghost={giftLeft} />
-      <span className="line-clamp-2 text-center text-xs font-bold leading-tight">{item.name}</span>
+      <span lang="sv" className="word-fit line-clamp-2 text-center text-xs font-bold leading-tight md:text-sm">
+        {item.name}
+      </span>
       <span aria-hidden className="mt-auto flex w-full justify-center">
         {owned ? (
-          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 md:text-sm">
             ✓ Din
           </span>
         ) : giftLeft ? (
-          <span className="text-center text-[11px] font-semibold leading-tight text-zinc-500 dark:text-zinc-400">
+          <span className="text-center text-xs font-semibold leading-tight text-zinc-500 dark:text-zinc-400 md:text-sm">
             🎁 {giftCondition(item)}
           </span>
         ) : (

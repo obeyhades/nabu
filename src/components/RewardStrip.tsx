@@ -6,6 +6,7 @@ import { playPeel } from "../lib/sfx";
 import { parseLessonKey } from "../lib/progress";
 import { showsEmoji } from "../lib/emojiSupport";
 import { numberOf, tiltOf } from "../lib/stickerArt";
+import { longestWord } from "../lib/fit";
 import { ALPHABETS } from "../data/alphabets";
 import { labelOf } from "../data/concepts";
 import { GAMES } from "../data/gameRegistry";
@@ -30,7 +31,11 @@ import { StarPouch } from "./StarPouch";
  *
  * Layout: rutan har sin slutliga höjd direkt (innehållet finns i DOM:en från
  * start, bara osynligt) och tonar in efter 0,9 s – efter stjärnorna. Knapparna
- * under blockeras aldrig. Högst ca 124 px hög, alltid dir="ltr".
+ * under blockeras aldrig. Högst ca 124 px hög på mobil, alltid dir="ltr".
+ * Ordkorten delar på remsans bredd; ordet står på en rad och krymper med kortet
+ * (två rader först under 10 px, aldrig "…").
+ * Surfplatta (md:): större kort, emoji och text – men inte på en liggande mobil
+ * (short: tar tillbaka mobilstorleken, där höjden är det som tar slut).
  */
 
 const REVEAL_DELAY_MS = 900; // efter playLevelUp och stjärnornas pop
@@ -140,7 +145,7 @@ function PouchChip({ n, big = false }: { n: number; big?: boolean }) {
     <span
       className={cn(
         "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-amber-100 font-bold text-amber-800 dark:bg-amber-900/50 dark:text-amber-200",
-        big ? "px-4 py-1.5 text-lg" : "px-2.5 py-0.5 text-xs"
+        big ? "px-4 py-1.5 text-lg" : "px-2.5 py-0.5 text-xs md:text-sm short:text-xs"
       )}
     >
       <StarPouch className={big ? "text-2xl" : "text-base"} />
@@ -149,15 +154,18 @@ function PouchChip({ n, big = false }: { n: number; big?: boolean }) {
   );
 }
 
-/** Påsen på högkant bredvid ordkorten (valraden har ingen plats för en rad till). */
+/**
+ * Påsen på högkant bredvid ordkorten (valraden har ingen plats för en rad till).
+ * Minsta telefonerna (320 px): smalare, bara påsen och "+2" – orden på korten får bredden.
+ */
 function PouchTag({ n }: { n: number }) {
   return (
-    <span className="flex h-20 w-12 shrink-0 flex-col items-center justify-center rounded-2xl bg-amber-100 font-bold text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
-      <StarPouch className="text-2xl" />
-      <span dir="ltr" className="text-sm font-black leading-tight">
+    <span className="flex h-20 w-12 shrink-0 flex-col items-center justify-center rounded-2xl bg-amber-100 font-bold text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 max-[359px]:w-9 md:h-28 md:w-16 short:h-20 short:w-12">
+      <StarPouch className="text-2xl md:text-3xl short:text-2xl" />
+      <span dir="ltr" className="text-sm font-black leading-tight md:text-base short:text-sm">
         +{n}
       </span>
-      <span className="text-[10px] leading-tight">i påsen</span>
+      <span className="text-xs leading-tight max-[359px]:sr-only md:text-sm short:text-xs">i påsen</span>
     </span>
   );
 }
@@ -169,7 +177,7 @@ function Chips({ chips }: { chips: Chip[] }) {
       {chips.map((c) => (
         <span
           key={c.key}
-          className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold leading-tight", CHIP_TONE[c.tone])}
+          className={cn("rounded-full px-2 py-0.5 text-xs font-semibold leading-tight md:text-sm", CHIP_TONE[c.tone])}
         >
           {c.text}
         </span>
@@ -198,13 +206,26 @@ function WordFace({ id, lang }: { id: StickerId; lang: LangCode }) {
   );
 }
 
-/** Ordet på inlärningsspråket (rätt `lang`/`dir` – bara ordet får vara RTL). */
-function WordText({ id, lang, className }: { id: StickerId; lang: LangCode; className?: string }) {
+/**
+ * Ordets storlek på ett ordkort: hela ordet på en rad, så stort som kortet
+ * tillåter (högst --lbl: 12 px på mobil, 16 px på surfplattan). Först under
+ * 10 px får ordet dela sig på två rader. Kortet är en container (@container),
+ * så 100cqi = kortets innerbredd. ~0,6 em per tecken i fet stil + ett teckens marginal
+ * (samma räkning som memorykorten).
+ */
+function cardLabelFont(word: string): string {
+  const n = Math.max(1, longestWord(word));
+  return `min(var(--lbl), max(10px, calc(100cqi / ${((n + 1) * 0.6).toFixed(2)})))`;
+}
+
+/** Ordet på inlärningsspråket (rätt `lang`/`dir` – bara ordet får vara RTL). `fit`: storleken följer kortets bredd. */
+function WordText({ id, lang, className, fit = false }: { id: StickerId; lang: LangCode; className?: string; fit?: boolean }) {
   const p = parseStickerId(id);
   if (p?.family !== "word") return null;
+  const word = labelOf(p.concept, lang);
   return (
-    <span lang={lang} dir={getLanguage(lang).dir} className={className}>
-      {labelOf(p.concept, lang)}
+    <span lang={lang} dir={getLanguage(lang).dir} className={className} style={fit ? { fontSize: cardLabelFont(word) } : undefined}>
+      {word}
     </span>
   );
 }
@@ -292,10 +313,11 @@ function StripBody({ r }: { r: Reveal }) {
     body = (
       <div className="flex flex-col items-center gap-1.5">
         {/* Rubriken byter text efter första trycket men behåller sin höjd (ingen hoppande layout) */}
-        <p className="min-h-4 text-xs font-bold leading-tight text-purple-700 dark:text-purple-300">
+        <p className="min-h-5 text-sm font-bold leading-tight text-purple-700 dark:text-purple-300 md:min-h-6 md:text-base short:min-h-5 short:text-sm">
           {tapped ? "Klart! De andra orden kommer när du övar igen." : "Välj ett ord till din bok"}
         </p>
-        <div className="flex items-center justify-center gap-2">
+        {/* Korten delar på bredden (aldrig bredare än remsan, även på 320 px) */}
+        <div className="flex w-full items-stretch justify-center gap-2 max-[359px]:gap-1.5">
           {w.options.map((id) => {
             const chosen = id === w.chosen;
             return (
@@ -309,24 +331,29 @@ function StripBody({ r }: { r: Reveal }) {
                 animate={{ rotate: chosen ? 0 : tiltOf(id), y: chosen ? -4 : 0 }}
                 transition={PEEL_SPRING}
                 whileTap={{ scale: 0.95 }}
+                // pb-3: det uppvikta hörnet (.sticker-curl, 12 px nere till höger) täcker aldrig ordet –
+                // utan sidopadding, så att ordet får hela kortets bredd
                 className={cn(
-                  "sticker-curl relative flex h-20 w-[76px] flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl bg-white px-1 outline-none dark:bg-zinc-800",
+                  "sticker-curl @container relative flex min-h-20 min-w-0 max-w-[88px] flex-1 basis-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-2xl bg-white px-0.5 pb-3 pt-1 outline-none [--lbl:12px] dark:bg-zinc-800",
+                  "md:min-h-28 md:max-w-[128px] md:gap-1 md:pt-2 md:[--lbl:16px] short:min-h-20 short:max-w-[88px] short:gap-0.5 short:pt-1 short:[--lbl:12px]",
                   "focus-visible:ring-4 focus-visible:ring-purple-400",
                   chosen ? "shadow-lg ring-4 ring-amber-400" : "shadow ring-1 ring-black/5 dark:ring-white/10"
                 )}
               >
-                <span className="text-4xl">
+                <span className="text-4xl md:text-5xl short:text-4xl">
                   <WordFace id={id} lang={lang} />
                 </span>
+                {/* Ett ord på en rad (krymper med kortet, t.ex. bredvid påsen på 320 px) – aldrig "hambur-gare" */}
                 <WordText
                   id={id}
                   lang={lang}
-                  className="max-w-full truncate text-[11px] font-bold leading-tight text-zinc-700 dark:text-zinc-200"
+                  fit
+                  className="word-fit line-clamp-2 max-w-full font-bold leading-tight text-zinc-700 dark:text-zinc-200"
                 />
                 {chosen && (
                   <span
                     aria-hidden
-                    className="absolute left-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-amber-400 text-[10px] font-black text-white"
+                    className="absolute left-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-amber-400 text-[10px] font-black text-white md:left-1.5 md:top-1.5 md:h-5 md:w-5 md:text-xs short:left-1 short:top-1 short:h-4 short:w-4 short:text-[10px]"
                   >
                     ✓
                   </span>
@@ -340,7 +367,9 @@ function StripBody({ r }: { r: Reveal }) {
           {row3.length ? (
             <Chips chips={row3} />
           ) : (
-            r.praise && <span className="text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">{r.praise}</span>
+            r.praise && (
+              <span className="text-xs leading-tight text-zinc-500 dark:text-zinc-400 md:text-sm short:text-xs">{r.praise}</span>
+            )
           )}
         </div>
       </div>
@@ -356,22 +385,22 @@ function StripBody({ r }: { r: Reveal }) {
             aria-label={`Hör ${stickerName(id)}`}
             whileTap={{ scale: 0.95 }}
             style={{ rotate: tiltOf(id) }}
-            className="sticker-curl relative grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-lg outline-none ring-4 ring-amber-400 focus-visible:ring-purple-400 dark:bg-zinc-800"
+            className="sticker-curl relative grid h-[72px] w-[72px] shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-lg outline-none ring-4 ring-amber-400 focus-visible:ring-purple-400 dark:bg-zinc-800 md:h-24 md:w-24 short:h-[72px] short:w-[72px]"
           >
-            <span className="text-5xl">
+            <span className="text-5xl md:text-6xl short:text-5xl">
               <WordFace id={id} lang={lang} />
             </span>
           </motion.button>
           <div className="flex min-w-0 flex-col items-start text-left">
             <div className="flex flex-wrap items-center gap-x-2">
-              <span className="text-sm font-bold text-purple-700 dark:text-purple-300">Nytt klistermärke!</span>
+              <span className="text-sm font-bold text-purple-700 dark:text-purple-300 md:text-base short:text-sm">Nytt klistermärke!</span>
               {pouch}
             </div>
             <div className="flex items-baseline gap-1.5">
-              <WordText id={id} lang={lang} className="text-xl font-black leading-tight" />
+              <WordText id={id} lang={lang} className="word-fit text-xl font-black leading-tight md:text-2xl short:text-xl" />
               {lang !== "sv" && <span className="text-xs text-zinc-500 dark:text-zinc-400">{stickerName(id)}</span>}
             </div>
-            <span className="text-[11px] text-zinc-500 dark:text-zinc-400">Tryck för att höra</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 md:text-sm">Tryck för att höra</span>
           </div>
         </div>
         {chips.length > 0 && (
@@ -399,7 +428,7 @@ function StripBody({ r }: { r: Reveal }) {
               // align-top: Stickerns inline-grid sätts annars på textens baslinje (vagnar och pärlor hamnar för lågt)
               className={cn(
                 "relative grid place-items-center [&_.sticker]:align-top",
-                roomy ? "h-14 w-14" : "h-10 w-10"
+                roomy ? "h-14 w-14 md:h-16 md:w-16 short:h-14 short:w-14" : "h-10 w-10 md:h-12 md:w-12 short:h-10 short:w-10"
               )}
             >
               <Sticker
@@ -409,7 +438,7 @@ function StripBody({ r }: { r: Reveal }) {
                 tricky={owned[id]?.tricky === 1}
                 lang={lang}
                 decorative
-                className={roomy ? "text-[44px]" : "text-[30px]"}
+                className={roomy ? "text-[44px] md:text-[52px] short:text-[44px]" : "text-[30px] md:text-[36px] short:text-[30px]"}
               />
               {/* bocken per bricka: "den här är din nu" */}
               <span
@@ -426,7 +455,9 @@ function StripBody({ r }: { r: Reveal }) {
             </span>
           )}
         </div>
-        {r.praise && <p className="text-xs font-semibold leading-tight text-zinc-600 dark:text-zinc-300">{r.praise}</p>}
+        {r.praise && (
+          <p className="text-xs font-semibold leading-tight text-zinc-600 dark:text-zinc-300 md:text-sm short:text-xs">{r.praise}</p>
+        )}
         {(pouch || chips.length > 0) && (
           <div className="flex flex-wrap items-center justify-center gap-1">
             {pouch}
@@ -464,7 +495,7 @@ function StripBody({ r }: { r: Reveal }) {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div dir="ltr" className="w-full max-w-sm">
+      <div dir="ltr" className="w-full max-w-sm md:max-w-md">
         <p role="status" aria-live="polite" className="sr-only">
           {shown ? summary : ""}
         </p>

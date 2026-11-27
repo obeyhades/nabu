@@ -18,6 +18,9 @@ import { difficulty } from "../lib/difficulty";
 import { shuffle } from "../lib/shuffle";
 import { graphemes, normChar } from "../lib/graphemes";
 import { cn } from "../lib/cn";
+import { balancedRowWidth } from "../lib/fit";
+import { GAME_MAIN } from "../lib/layout";
+import { useElementSize } from "../hooks/useElementSize";
 import type { Concept, Level, PlayCategory } from "../types";
 
 
@@ -34,6 +37,7 @@ export default function SpellingGame() {
     []
   );
   const [kbMode, setKbMode] = useState(false);
+  const [bankBox, { w: bankW }] = useElementSize<HTMLDivElement>();
 
   const [category, setCategory] = useState<PlayCategory | null>(null);
   const [level, setLevel] = useState<Level | null>(null);
@@ -150,10 +154,16 @@ export default function SpellingGame() {
   }
 
   if (!current) return null;
+  const n = targetG.length;
+  const inputSize = n <= 9 ? "text-3xl" : n <= 13 ? "text-2xl" : "text-xl";
+  // Bokstavsknapparnas bredd (min-w-12, md:min-w-14, short:min-w-11) → jämna rader i banken
+  const landscapeLow = typeof window !== "undefined" && window.innerWidth > window.innerHeight && window.innerHeight <= 500;
+  const keyW = landscapeLow ? 44 : typeof window !== "undefined" && window.innerWidth >= 768 ? 56 : 48;
+  const bankRowW = balancedRowWidth(bank.length, bankW, keyW, 8);
 
   // 4) Spela – skriv på tangentbordet OCH/ELLER tryck på bokstäverna
   return (
-    <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
+    <main dir={getLanguage(lang).dir} className={GAME_MAIN}>
       <GameHeader
         onBack={() => setLevel(null)}
         progress={index / concepts.length}
@@ -162,62 +172,72 @@ export default function SpellingGame() {
         combo={lesson.combo}
       />
 
-      <QuestionStage qkey={index}>
-        <BigPicture>{current.emoji}</BigPicture>
-
-        <input
-          ref={inputRef}
-          autoFocus={!isTouch}
-          value={accepted.join("")}
-          onChange={(e) => onType(e.target.value)}
-          onClick={() => {
-            if (isTouch && !kbMode) {
-              setKbMode(true);
-              window.setTimeout(() => inputRef.current?.focus(), 0);
-            }
-          }}
-          dir={getLanguage(lang).dir}
-          placeholder="Skriv eller tryck…"
-          inputMode={isTouch && !kbMode ? "none" : "text"}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          className={cn(
-            "w-full max-w-xs rounded-2xl border-2 bg-white px-5 py-3 text-center text-3xl font-bold lowercase outline-none dark:bg-zinc-800",
-            wrong
-              ? "animate-shake border-red-400 text-red-500"
-              : "border-purple-300 text-purple-600 focus:border-purple-500 dark:border-purple-800 dark:text-purple-300"
-          )}
-        />
-        {/* Hur många bokstäver kvar */}
-        <div className="-mt-4 flex gap-1.5" dir="ltr">
-          {targetG.map((_, i) => (
-            <span
-              key={i}
-              className={cn(
-                "h-2 w-6 rounded-full",
-                i < accepted.length ? "bg-emerald-400" : "bg-zinc-300 dark:bg-zinc-600"
-              )}
-            />
-          ))}
+      <QuestionStage qkey={index} split>
+        <div className="stage-prompt">
+          <BigPicture className="text-8xl low:text-7xl md:text-9xl short:text-7xl">{current.emoji}</BigPicture>
         </div>
 
-        {/* Bokstavsbank – tryck för att fylla i fältet */}
-        <div className="flex flex-wrap justify-center gap-2">
-          {bank.map((letter, i) => (
-            <button
-              key={i}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => tapLetter(letter)}
-              className="h-14 min-w-12 rounded-xl bg-white px-2 text-2xl font-bold uppercase text-purple-600 shadow transition active:scale-90 dark:bg-zinc-800 dark:text-purple-300"
-            >
-              {letter}
-            </button>
-          ))}
+        <div className="stage-answers flex w-full flex-col items-center justify-center gap-3">
+          <input
+            ref={inputRef}
+            autoFocus={!isTouch}
+            value={accepted.join("")}
+            onChange={(e) => onType(e.target.value)}
+            onClick={() => {
+              if (isTouch && !kbMode) {
+                setKbMode(true);
+                window.setTimeout(() => inputRef.current?.focus(), 0);
+              }
+            }}
+            dir={getLanguage(lang).dir}
+            lang={lang}
+            placeholder="Skriv eller tryck…"
+            inputMode={isTouch && !kbMode ? "none" : "text"}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            className={cn(
+              // långa ord får mindre text, så att början av ordet inte rullar ur bild
+              "w-full max-w-xs select-text rounded-2xl border-2 bg-white px-5 py-3 text-center font-bold lowercase outline-none dark:bg-zinc-800 md:max-w-sm",
+              inputSize,
+              wrong
+                ? "animate-shake border-red-400 text-red-500"
+                : "border-purple-300 text-purple-600 focus:border-purple-500 dark:border-purple-800 dark:text-purple-300"
+            )}
+          />
+          {/* Hur många bokstäver kvar – prickarna krymper för långa ord (aldrig bredare än skärmen) */}
+          <div className="flex w-full max-w-xs justify-center gap-1.5" dir="ltr">
+            {targetG.map((_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "h-2 min-w-1.5 max-w-6 flex-1 rounded-full",
+                  i < accepted.length ? "bg-emerald-400" : "bg-zinc-300 dark:bg-zinc-600"
+                )}
+              />
+            ))}
+          </div>
+
+          {/* Bokstavsbank – tryck för att fylla i fältet. Raderna blir lika långa
+              (6 bokstäver på 320 px = 3 + 3, aldrig 5 + 1 med en ensam bokstav) */}
+          <div ref={bankBox} className="w-full md:max-w-xl">
+            <div className="mx-auto flex flex-wrap justify-center gap-2" style={{ maxWidth: bankRowW || undefined }}>
+              {bank.map((letter, i) => (
+                <button
+                  key={i}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => tapLetter(letter)}
+                  className="h-14 min-w-12 rounded-xl bg-white px-2 text-2xl font-bold uppercase text-purple-600 shadow transition active:scale-90 dark:bg-zinc-800 dark:text-purple-300 md:h-16 md:min-w-14 md:text-3xl short:h-12 short:min-w-11"
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="stage-count flex items-center gap-4">
           <Button
             onClick={() => {
               if (!locked) {
@@ -226,7 +246,7 @@ export default function SpellingGame() {
                 if (!isTouch || kbMode) inputRef.current?.focus();
               }
             }}
-            className="bg-white text-purple-600 dark:bg-zinc-800 dark:text-purple-300"
+            className="bg-white text-purple-600 dark:bg-zinc-800 dark:text-purple-300 short:py-2"
           >
             Sudda
           </Button>
