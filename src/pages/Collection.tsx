@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { GAMES } from "../data/gameRegistry";
 import { CATEGORIES, categoryInfo } from "../data/concepts";
 import { LANGUAGES } from "../data/languages";
@@ -25,6 +26,8 @@ function pathLabel(path: string): { name: string; emoji: string } {
 /**
  * Min samling: varje spel med sina stigar. En stig visas som en rad med
  * 20 små prickar (en per nivå) + stjärnor – fylls i när barnet spelar.
+ * Hör till boken i menyn ("Boken" lyser här), med en länk tillbaka dit.
+ * Stjärnorna här är stigarnas stjärnor – inte de i Stjärnpåsen.
  */
 export default function Collection() {
   const stars = useProfile((s) => s.stars);
@@ -41,13 +44,20 @@ export default function Collection() {
     }
 
   return (
-    <main className="mx-auto max-w-3xl p-6 pb-24">
+    <main className="mx-auto max-w-3xl p-6 pb-nav lg:max-w-5xl">
       <h1 className="text-2xl font-bold">Min samling 🏆</h1>
       <p className="text-zinc-500 dark:text-zinc-400">
-        ⭐ {earned} av {total} stjärnor · 🏆 {trophies} hela stigar klara
+        ⭐ <span dir="ltr">{earned}</span> av <span dir="ltr">{total}</span> stjärnor på stigarna · 🏆{" "}
+        <span dir="ltr">{trophies}</span> hela stigar klara
       </p>
+      <Link
+        to="/stickers"
+        className="mt-3 inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 py-2 font-semibold text-rose-700 shadow outline-none transition active:scale-95 focus-visible:ring-4 focus-visible:ring-purple-400 dark:bg-zinc-800 dark:text-rose-300"
+      >
+        <span aria-hidden>📖</span> Till klistermärkesboken
+      </Link>
 
-      <div className="mt-6 space-y-6">
+      <div className="mt-6 space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6 lg:space-y-0">
         {GAMES.map((game, gi) => {
           const paths = pathsFor(game, CAT_IDS, LANG_CODES);
           return (
@@ -68,11 +78,17 @@ export default function Collection() {
                   const label = pathLabel(path);
                   const complete = p.cleared === LEVEL_COUNT;
                   return (
-                    <div key={path} className="flex items-center gap-2 text-sm">
-                      <span className="w-28 shrink-0 truncate font-medium text-zinc-600 dark:text-zinc-300">
-                        {label.emoji} {label.name}
+                    // Mobil: namnet på en egen rad, så att stapeln får hela bredden
+                    <div key={path} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base">
+                      {/* Ikonen i en egen ruta: samma luft till namnet för alla emoji (även 🗺️ med variantväljare) */}
+                      {/* md:w-32: 16 px text på surfplattan – "Kroppsdelar" står helt (aldrig "Kroppsdel…") */}
+                      <span className="flex w-full min-w-0 items-center gap-1.5 font-medium text-zinc-600 sm:w-28 sm:shrink-0 md:w-32 dark:text-zinc-300">
+                        <span aria-hidden className="shrink-0">
+                          {label.emoji}
+                        </span>
+                        <span className="min-w-0 truncate">{label.name}</span>
                       </span>
-                      <div className="flex flex-1 gap-0.5" aria-label={`${p.cleared} av ${LEVEL_COUNT} nivåer`}>
+                      <div className="flex min-w-0 flex-1 gap-0.5" aria-label={`${p.cleared} av ${LEVEL_COUNT} nivåer`}>
                         {Array.from({ length: LEVEL_COUNT }).map((_, i) => (
                           <span
                             key={i}
@@ -84,7 +100,11 @@ export default function Collection() {
                           />
                         ))}
                       </div>
-                      <span className="w-14 shrink-0 text-right text-xs font-semibold text-zinc-500">
+                      {/* "12/20 🥇2" på en rad: kolumnen växer hellre än att radbryta */}
+                      <span
+                        dir="ltr"
+                        className="min-w-14 shrink-0 whitespace-nowrap text-right text-xs font-semibold text-zinc-500 md:min-w-20 md:text-sm"
+                      >
                         {complete ? "🏆" : `${p.cleared}/${LEVEL_COUNT}`}
                         {p.gold > 0 ? ` 🥇${p.gold}` : ""}
                       </span>

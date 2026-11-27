@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { LevelPicker } from "../components/LevelPicker";
 import { GameHeader } from "../components/GameHeader";
-import { QuestionStage } from "../components/QuestionStage";
+import { QuestionStage, RoundCount } from "../components/QuestionStage";
+import { FitGrid } from "../components/FitGrid";
 import { ChoiceButton } from "../components/ChoiceButton";
 import { choiceState } from "../lib/choice";
 import { Coach } from "../components/Coach";
@@ -14,6 +15,7 @@ import { useLesson } from "../hooks/useLesson";
 import { difficulty } from "../lib/difficulty";
 import { shuffle } from "../lib/shuffle";
 import { cn } from "../lib/cn";
+import { GAME_MAIN } from "../lib/layout";
 import type { Level } from "../types";
 
 const MATH_CAT = "all"; // matte har ingen kategori
@@ -82,7 +84,11 @@ function makeProblem(level: Level, optionCount: number): Problem {
   return { a, b, op, answer, options: shuffle([...opts]) };
 }
 
-/** Bildstöd: prickar för små tal på de första stegen i varje räknesätt. */
+/**
+ * Bildstöd: prickar för små tal på de första stegen i varje räknesätt.
+ * Större på surfplattan (md:) så att det går att räkna dem – men inte på en
+ * liggande mobil (short:), där höjden behövs till svaren.
+ */
 function Visual({ p }: { p: Problem }) {
   const dot = (n: number, emoji: string) => (
     <span className="flex flex-wrap justify-center gap-0.5">
@@ -100,7 +106,7 @@ function Visual({ p }: { p: Problem }) {
   );
   if (p.op === "+" || p.op === "−") {
     return (
-      <div className="flex max-w-xs items-center gap-2 text-2xl">
+      <div className="flex max-w-xs items-center gap-2 text-2xl md:max-w-lg md:gap-3 md:text-4xl short:max-w-xs short:text-lg">
         {dot(p.a, "🔵")}
         <span className="font-bold text-sky-500">{p.op}</span>
         {dot(p.b, p.op === "+" ? "🟡" : "❌")}
@@ -110,7 +116,7 @@ function Visual({ p }: { p: Problem }) {
   if (p.op === "×") {
     // a grupper med b saker
     return (
-      <div className="flex max-w-sm flex-wrap justify-center gap-2 text-xl">
+      <div className="flex max-w-sm flex-wrap justify-center gap-2 text-xl md:max-w-xl md:gap-3 md:text-3xl short:max-w-sm short:text-base">
         {Array.from({ length: p.a }).map((_, i) => (
           <span key={i} className="rounded-xl bg-sky-100 px-1.5 py-1 dark:bg-sky-900/40">
             {dot(p.b, "🍎")}
@@ -121,9 +127,9 @@ function Visual({ p }: { p: Problem }) {
   }
   // a saker delas i b högar
   return (
-    <div className="flex max-w-sm flex-col items-center gap-1 text-xl">
+    <div className="flex max-w-sm flex-col items-center gap-1 text-xl md:max-w-xl md:text-3xl short:max-w-sm short:text-base">
       {dot(p.a, "🍬")}
-      <span className="text-sm text-zinc-500">dela på {p.b} {"🧒".repeat(Math.min(p.b, 10))}</span>
+      <span className="text-sm text-zinc-500 dark:text-zinc-400 md:text-xl short:text-sm">dela på {p.b} {"🧒".repeat(Math.min(p.b, 10))}</span>
     </div>
   );
 }
@@ -143,7 +149,17 @@ export default function MathGame() {
 
   const startLevel = (lvl: Level, isGold = false) => {
     const d = difficulty(lvl, isGold);
-    setProblems(Array.from({ length: d.rounds }, () => makeProblem(lvl, Math.min(d.options, 5))));
+    // inga dubbletter i samma lektion (t.ex. "2 + 1" två gånger)
+    const seen = new Set<string>();
+    const list: Problem[] = [];
+    for (let tries = 0; list.length < d.rounds && tries < 200; tries++) {
+      const p = makeProblem(lvl, Math.min(d.options, 5));
+      const key = `${p.a}${p.op}${p.b}`;
+      if (seen.has(key) && tries < 150) continue;
+      seen.add(key);
+      list.push(p);
+    }
+    setProblems(list);
     setLevel(lvl);
     setGold(isGold);
     setIndex(0);
@@ -203,7 +219,7 @@ export default function MathGame() {
   const showVisual = !gold && level < LEVEL_COUNT && (level - 1) % 5 < 2;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
+    <main className={GAME_MAIN}>
       <GameHeader
         onBack={() => setLevel(null)}
         progress={index / problems.length}
@@ -212,39 +228,43 @@ export default function MathGame() {
         combo={lesson.combo}
       />
 
-      <QuestionStage qkey={index}>
-        {showVisual && <Visual p={current} />}
+      <QuestionStage qkey={index} split>
+        <div className="stage-prompt">
+          {showVisual && <Visual p={current} />}
 
-        <motion.div
-          initial={{ scale: 0.5 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 15 }}
-          className="flex items-baseline gap-3 text-6xl font-black"
-          dir="ltr"
-        >
-          <span>{current.a}</span>
-          <span className="text-sky-500">{current.op}</span>
-          <span>{current.b}</span>
-          <span className="text-zinc-400">= ?</span>
-        </motion.div>
+          {/* Talet krymper med skärmen: "100 ÷ 10 = ?" får plats även på 320 px */}
+          <motion.div
+            initial={{ scale: 0.5 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+            className="flex items-baseline gap-2 text-[clamp(2.25rem,12vw,3.75rem)] font-black sm:gap-3 short:text-4xl"
+            dir="ltr"
+          >
+            <span>{current.a}</span>
+            <span className="text-sky-500">{current.op}</span>
+            <span>{current.b}</span>
+            <span className="text-zinc-400">= ?</span>
+          </motion.div>
+        </div>
 
-        <div className={cn("grid w-full gap-3", current.options.length <= 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3")}>
+        <FitGrid count={current.options.length} ratio={0.7} min={60} max={170}>
           {current.options.map((opt, i) => (
             <ChoiceButton
               key={opt}
               index={i}
               state={choiceState(opt, picked, current.answer)}
               onClick={() => answer(opt)}
-              className={cn("p-6 text-3xl font-black", picked === null && "text-sky-600 dark:text-sky-300")}
+              className={cn(
+                "text-[calc(var(--tile)*0.3)] font-black",
+                picked === null && "text-sky-600 dark:text-sky-300"
+              )}
             >
               {opt}
             </ChoiceButton>
           ))}
-        </div>
+        </FitGrid>
 
-        <span dir="ltr" className="font-semibold text-zinc-500 dark:text-zinc-400">
-          {index + 1} / {problems.length}
-        </span>
+        <RoundCount n={index + 1} of={problems.length} />
       </QuestionStage>
       <Coach event={coach.event} />
     </main>

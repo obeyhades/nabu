@@ -16,6 +16,9 @@ import { VictoryScreen } from "../components/VictoryScreen";
 import { difficulty, lerp, type Difficulty } from "../lib/difficulty";
 import { playPop } from "../lib/sfx";
 import { shuffle } from "../lib/shuffle";
+import { cn } from "../lib/cn";
+import { fitText } from "../lib/fit";
+import { GAME_SCREEN } from "../lib/layout";
 import type { Concept, Level, PlayCategory } from "../types";
 
 type Round = { concept: Concept; options: Concept[] };
@@ -141,44 +144,51 @@ export default function BalloonGame() {
 
   // 4) Lyssna & poppa
   return (
-    <main className="mx-auto flex h-[100dvh] max-w-xl flex-col overflow-hidden px-4 pt-4 pb-4 sm:px-6">
+    <main className={GAME_SCREEN}>
       <GameHeader
         onBack={() => setLevel(null)}
         progress={index / rounds.length}
         level={level}
         gold={gold}
         combo={lesson.combo}
+        extra={
+          <span dir="ltr" className="shrink-0 font-semibold text-zinc-500 dark:text-zinc-400">
+            {index + 1} / {rounds.length}
+          </span>
+        }
       />
 
-      <div className="flex items-center gap-3 py-3">
+      <div className="flex items-center gap-3 py-3 short:py-1.5">
         <motion.button
           onClick={sayWord}
           aria-label="Hör ordet igen"
           animate={{ scale: [1, 1.06, 1] }}
           transition={{ repeat: Infinity, duration: 1.6 }}
           whileTap={{ scale: 0.9 }}
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-rose-600 text-white shadow-lg"
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-rose-600 text-white shadow-lg short:h-12 short:w-12"
         >
-          <Volume2 size={32} />
+          <Volume2 size={32} className="short:size-6" />
         </motion.button>
         <div className="min-w-0 flex-1">
           {showWord ? (
+            // Ordet klipps aldrig med "…": långa ord blir mindre och får två rader
             <motion.p
               key={`${session}-${index}`}
               initial={{ scale: 0.7, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
+              lang={lang}
               dir={getLanguage(lang).dir}
-              className="truncate text-4xl font-extrabold text-zinc-800 dark:text-white"
+              className={cn(
+                "word-fit line-clamp-2 font-extrabold leading-snug text-zinc-800 dark:text-white",
+                fitText(word, [[7, "text-4xl short:text-3xl"], [10, "text-3xl short:text-2xl"]], "text-2xl short:text-xl")
+              )}
             >
               {word}
             </motion.p>
           ) : (
-            <p className="font-semibold text-zinc-600 dark:text-zinc-300">Lyssna och poppa rätt ballong!</p>
+            <p className="font-semibold text-zinc-600 dark:text-zinc-300 md:text-xl">Lyssna och poppa rätt ballong!</p>
           )}
         </div>
-        <span dir="ltr" className="shrink-0 font-semibold text-zinc-500 dark:text-zinc-400">
-          {index + 1} / {rounds.length}
-        </span>
       </div>
 
       <BalloonField
@@ -224,6 +234,18 @@ const COLORS: [string, string][] = [
 const ASPECT = 1.8;
 
 /**
+ * Ballongens bredd i px för en spelplan på w × h. Bredden styr på stående skärm;
+ * på en liggande mobil är planen låg och då styr höjden (en ballong får ta högst
+ * ungefär två tredjedelar av planens höjd), så att flera ballonger syns hela.
+ * Farten räknas redan från planens höjd (samma tid att korsa planen).
+ */
+function balloonWidth(w: number, h: number): number {
+  const byWidth = Math.max(84, w * 0.23);
+  const byHeight = h > 0 ? h / (ASPECT * 1.5) : byWidth;
+  return Math.round(Math.max(52, Math.min(124, byWidth, byHeight)));
+}
+
+/**
  * Hur många sekunder det tar för en ballong att korsa planen.
  * Nivå 1 (speed 1) ≈ 9.5 s → nivå 20 (speed 2.2) ≈ 3.5 s, guld nivå 20 ≈ 3.2 s.
  * Med reducerad rörelse går allt 60 % långsammare.
@@ -266,7 +288,7 @@ function BalloonField({
     escapedRef.current = onAnswerEscaped;
   });
 
-  const bw = Math.round(Math.min(124, Math.max(84, size.w * 0.23)));
+  const bw = balloonWidth(size.w, size.h);
   const bh = bw * ASPECT;
 
   // Mät planen (och följ storleksändringar)
@@ -313,8 +335,8 @@ function BalloonField({
     (i: number) => {
       const b = balloonsRef.current[i];
       if (!b) return;
-      const { w } = sizeRef.current;
-      const bwNow = Math.min(124, Math.max(84, w * 0.23));
+      const { w, h } = sizeRef.current;
+      const bwNow = balloonWidth(w, h);
       b.y = -bwNow * ASPECT * (1 + Math.random() * 0.3);
       b.x = pickX(i, b.y, w, bwNow);
       b.phase = Math.random() * Math.PI * 2;
@@ -356,7 +378,7 @@ function BalloonField({
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const { w, h } = sizeRef.current;
-      const bwNow = Math.min(124, Math.max(84, w * 0.23));
+      const bwNow = balloonWidth(w, h);
       const bhNow = bwNow * ASPECT;
       const v = (h + bhNow) / total;
 
@@ -410,7 +432,10 @@ function BalloonField({
   return (
     <div
       ref={areaRef}
-      className="relative min-h-0 flex-1 touch-none overflow-hidden rounded-3xl bg-gradient-to-b from-sky-300 via-sky-200 to-sky-50 select-none dark:from-indigo-950 dark:via-slate-900 dark:to-slate-800"
+      // Stående: en remsa under himlen åt ugglan (Coach i hörnet), så att den aldrig står där
+      // ballongerna kommer upp – och himlen förblir centrerad under rubriken. Liggande står
+      // himlen långt från hörnet (surfplatta) eller så syns ingen uggla (mobil).
+      className="relative mb-16 min-h-0 flex-1 touch-none overflow-hidden rounded-3xl bg-gradient-to-b from-sky-300 via-sky-200 to-sky-50 select-none low:mb-14 md:mb-20 side:mb-0 md:side:mb-0 dark:from-indigo-950 dark:via-slate-900 dark:to-slate-800"
     >
       {/* Moln / stjärnor i bakgrunden */}
       <span aria-hidden className="pointer-events-none absolute top-[12%] left-[8%] text-5xl opacity-70 dark:hidden">

@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { CoachEvent } from "../hooks/useCoach";
+import { useSettings } from "../stores/useSettings";
+import { Mascot } from "./Mascot";
 
 const PRAISE = ["Bra!", "Snyggt!", "Wow!", "Rätt!", "Toppen!", "Superbra!"];
 const COMBO = ["Tre i rad! 🔥", "Du är het! 🔥", "Vilken kombo! ⚡"];
@@ -11,8 +13,11 @@ const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
 /**
  * Ugglan Nabu som coach i hörnet: hoppar och säger något när barnet svarar.
  * Spelet skickar in ett `event` som ändras vid varje svar.
+ * Nabu bär sin hatt från boet (bara hatten – inget runt halsen här), om inte
+ * föräldern stängt av "Visa Nabus hatt i spelen".
  */
 export function Coach({ event }: { event: CoachEvent | null }) {
+  const hatInGames = useSettings((s) => s.hatInGames);
   const [msg, setMsg] = useState<string | null>(null);
   const timer = useRef<number | undefined>(undefined);
 
@@ -27,7 +32,12 @@ export function Coach({ event }: { event: CoachEvent | null }) {
   }, [event]);
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-30 flex items-end gap-2 rtl:left-4 rtl:right-auto" dir="ltr">
+    // Ovanför hemindikatorn och notchen. På en liggande mobil finns ingen ledig
+    // hörna (svaren fyller högerspalten) – där syns jublet i kombo-räknaren i stället.
+    <div
+      className="pointer-events-none fixed bottom-[max(1rem,var(--safe-b))] right-[max(1rem,var(--safe-r))] z-30 flex items-end gap-2 rtl:left-[max(1rem,var(--safe-l))] rtl:right-auto short:hidden"
+      dir="ltr"
+    >
       <AnimatePresence>
         {msg && (
           <motion.div
@@ -51,10 +61,10 @@ export function Coach({ event }: { event: CoachEvent | null }) {
               : {}
         }
         transition={{ duration: 0.5 }}
-        className="text-5xl drop-shadow"
+        className="text-5xl drop-shadow low:text-4xl"
         aria-hidden
       >
-        🦉
+        <Mascot mood="still" only={["hat"]} plain={!hatInGames} />
       </motion.span>
     </div>
   );

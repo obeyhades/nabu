@@ -10,7 +10,8 @@ import { useLesson } from "../hooks/useLesson";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { LevelPicker } from "../components/LevelPicker";
 import { GameHeader } from "../components/GameHeader";
-import { QuestionStage } from "../components/QuestionStage";
+import { QuestionStage, RoundCount } from "../components/QuestionStage";
+import { FitGrid } from "../components/FitGrid";
 import { ChoiceButton } from "../components/ChoiceButton";
 import { choiceState } from "../lib/choice";
 import { Coach } from "../components/Coach";
@@ -18,7 +19,7 @@ import { useCoach } from "../hooks/useCoach";
 import { VictoryScreen } from "../components/VictoryScreen";
 import { difficulty } from "../lib/difficulty";
 import { shuffle } from "../lib/shuffle";
-import { cn } from "../lib/cn";
+import { GAME_MAIN, PROMPT_TEXT } from "../lib/layout";
 import type { Concept, Level, PlayCategory } from "../types";
 
 type Round = { concept: Concept; options: Concept[] };
@@ -123,11 +124,10 @@ export default function ListeningGame() {
   }
 
   if (!current) return null;
-  const cols = current.options.length <= 4 ? "grid-cols-2" : "grid-cols-3";
 
   // 4) Lyssna & välj
   return (
-    <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
+    <main dir={getLanguage(lang).dir} className={GAME_MAIN}>
       <GameHeader
         onBack={() => setLevel(null)}
         progress={index / rounds.length}
@@ -136,37 +136,38 @@ export default function ListeningGame() {
         combo={lesson.combo}
       />
 
-      <QuestionStage qkey={index}>
-        {/* Stor lyssna-knapp – ordet är hemligheten! */}
-        <motion.button
-          onClick={() => speak(word, lang, current.concept.id)}
-          aria-label="Hör ordet igen"
-          animate={{ scale: [1, 1.06, 1] }}
-          transition={{ repeat: Infinity, duration: 1.6 }}
-          whileTap={{ scale: 0.9 }}
-          className="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 text-white shadow-xl"
-        >
-          <Volume2 size={52} />
-        </motion.button>
-        <p className="font-semibold text-zinc-600 dark:text-zinc-300">Lyssna! Vilken bild hör du?</p>
+      <QuestionStage qkey={index} split>
+        <div className="stage-prompt">
+          {/* Stor lyssna-knapp – ordet är hemligheten! */}
+          <motion.button
+            onClick={() => speak(word, lang, current.concept.id)}
+            aria-label="Hör ordet igen"
+            animate={{ scale: [1, 1.06, 1] }}
+            transition={{ repeat: Infinity, duration: 1.6 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 text-white shadow-xl low:h-24 low:w-24 short:h-20 short:w-20"
+          >
+            <Volume2 size={52} className="short:size-10" />
+          </motion.button>
+          <p className={PROMPT_TEXT}>Lyssna! Vilken bild hör du?</p>
+        </div>
 
-        <div className={cn("grid w-full gap-3", cols)}>
+        {/* Rutorna mäter själva höjden: alla bilder syns, även på en liggande mobil */}
+        <FitGrid count={current.options.length}>
           {current.options.map((opt, i) => (
             <ChoiceButton
               key={opt.id}
               index={i}
               state={choiceState(opt.id, picked, current.concept.id)}
               onClick={() => choose(opt)}
-              className="aspect-square text-6xl"
+              className="text-[calc(var(--tile)*0.5)]"
             >
               {opt.emoji}
             </ChoiceButton>
           ))}
-        </div>
+        </FitGrid>
 
-        <span dir="ltr" className="font-semibold text-zinc-500 dark:text-zinc-400">
-          {index + 1} / {rounds.length}
-        </span>
+        <RoundCount n={index + 1} of={rounds.length} />
       </QuestionStage>
 
       <Coach event={coach.event} />

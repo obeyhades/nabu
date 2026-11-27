@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useAnimate } from "framer-motion";
 import { Eraser, Volume2 } from "lucide-react";
 import { CONCEPTS } from "../data/concepts";
+import { shuffle } from "../lib/shuffle";
 import { traceLevel, traceText, type TraceKind } from "../data/alphabets";
 import { getLanguage } from "../data/languages";
 import { LEVEL_COUNT } from "../data/levels";
@@ -18,6 +19,8 @@ import { VictoryScreen } from "../components/VictoryScreen";
 import { difficulty, type HelpLevel } from "../lib/difficulty";
 import { playPop } from "../lib/sfx";
 import { cn } from "../lib/cn";
+import { GAME_WIDE } from "../lib/layout";
+import { useElementSize } from "../hooks/useElementSize";
 import type { LangCode, Level } from "../types";
 
 type Item = { label: string; text: string; conceptId?: string };
@@ -252,11 +255,15 @@ function startPoint(
   return null;
 }
 
-function canvasSize(): number {
-  if (typeof window === "undefined") return 320;
-  const byWidth = window.innerWidth - 32;
-  const byHeight = window.innerHeight - 290;
-  return Math.max(220, Math.min(440, byWidth, byHeight));
+/**
+ * Rutans storlek: så stor som ytan som blir över tillåter (bredd och höjd), så
+ * att Sudda och Klar alltid syns – även på en liggande mobil. Större tak på
+ * surfplattor, där en stor yta hjälper små händer.
+ */
+function canvasSize(boxW: number, boxH: number): number {
+  if (!boxW || !boxH) return 0;
+  const cap = typeof window !== "undefined" && window.innerWidth >= 768 && window.innerHeight >= 600 ? 680 : 440;
+  return Math.floor(Math.max(160, Math.min(cap, boxW, boxH)));
 }
 
 function makeItems(
@@ -266,7 +273,8 @@ function makeItems(
   const { items, kind } = traceLevel(lang, level);
   return {
     kind,
-    items: items.slice(0, MAX_ROUNDS).map((label) => ({
+    // blanda ordningen så att samma nivå inte känns likadan varje gång
+    items: shuffle(items).slice(0, MAX_ROUNDS).map((label) => ({
       label,
       text: kind === "word" ? traceText(label) : label,
       conceptId:
@@ -298,7 +306,8 @@ export default function TraceGame() {
   const [index, setIndex] = useState(0);
   const [hasInk, setHasInk] = useState(false);
   const [passed, setPassed] = useState(false);
-  const [size, setSize] = useState(canvasSize);
+  const [canvasBox, box] = useElementSize<HTMLDivElement>();
+  const size = canvasSize(box.w, box.h);
 
   const guideRef = useRef<HTMLCanvasElement | null>(null);
   const inkRef = useRef<HTMLCanvasElement | null>(null);
@@ -327,12 +336,6 @@ export default function TraceGame() {
   const say = useCallback(() => {
     if (current) speak(current.label, lang, current.conceptId);
   }, [current, lang, speak]);
-
-  useEffect(() => {
-    const onResize = () => setSize(canvasSize());
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
 
   const redrawInk = useCallback(() => {
     const c = inkRef.current;
@@ -547,9 +550,11 @@ export default function TraceGame() {
         ? "Spåra siffran!"
         : "Spåra bokstaven!";
 
-  // 3) Spåra
+  // 3) Spåra – stående: fråga, ruta, knappar under varandra. Liggande mobil och
+  // surfplatta: fråga och knappar till vänster, rutan till höger (.stage-split-side)
+  // – på en iPad på tvären blir ritytan då så hög som skärmen tillåter.
   return (
-    <main className="mx-auto flex h-[100dvh] max-w-xl flex-col overflow-hidden overscroll-none p-4 sm:p-6">
+    <main className={GAME_WIDE}>
       <GameHeader
         onBack={() => setLevel(null)}
         progress={index / items.length}
@@ -558,18 +563,18 @@ export default function TraceGame() {
         combo={lesson.combo}
       />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-4">
-        <div className="flex h-16 w-full">
+      <div className="stage-split stage-split-side gap-4">
+        <div className="stage-prompt flex h-16 w-full">
           <QuestionStage qkey={index}>
             <div className="flex items-center gap-3">
-              <p className="text-lg font-bold text-zinc-600 dark:text-zinc-300">
+              <p className="text-lg font-bold text-zinc-600 dark:text-zinc-300 md:text-xl">
                 {prompt}
               </p>
               <motion.button
                 onClick={say}
                 aria-label="Hör igen"
                 whileTap={{ scale: 0.9 }}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 text-white shadow-lg"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 text-white shadow-lg"
               >
                 <Volume2 size={28} />
               </motion.button>
@@ -577,10 +582,17 @@ export default function TraceGame() {
           </QuestionStage>
         </div>
 
+        {/* Ytan som blir över (size-containment): rutan mäts från den.
+            Liggande surfplatta: luft till höger, så att ugglan (Coach) i hörnet inte står på rutan */}
+        <div
+          ref={canvasBox}
+          className="stage-answers grid min-h-40 w-full flex-1 place-items-center md:side:me-16 md:side:w-auto"
+          style={{ contain: "size" }}
+        >
         <div
           ref={scope}
           className="relative"
-          style={{ width: size, height: size }}
+          style={{ width: size, height: size, visibility: size ? undefined : "hidden" }}
         >
           <div className="absolute inset-0 rounded-3xl border-4 border-violet-200 bg-white shadow-inner dark:border-violet-900 dark:bg-zinc-800" />
           <canvas
@@ -641,36 +653,42 @@ export default function TraceGame() {
             )}
           </AnimatePresence>
         </div>
-
-        <div
-          className="flex w-full items-center justify-center gap-3"
-          style={{ maxWidth: size }}
-        >
-          <button
-            onClick={clear}
-            disabled={!hasInk || passed}
-            className={cn(
-              "flex h-16 flex-1 items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-zinc-600 shadow transition active:scale-95 dark:bg-zinc-800 dark:text-zinc-200",
-              (!hasInk || passed) && "opacity-50",
-            )}
-          >
-            <Eraser size={24} /> Sudda
-          </button>
-          <button
-            onClick={check}
-            disabled={passed}
-            className="flex h-16 flex-[1.4] items-center justify-center rounded-2xl bg-gradient-to-r from-green-400 to-emerald-600 text-xl font-black text-white shadow-lg transition active:scale-95 disabled:opacity-60"
-          >
-            Klar ✓
-          </button>
         </div>
 
-        <span
-          dir="ltr"
-          className="font-semibold text-zinc-500 dark:text-zinc-400"
-        >
-          {index + 1} / {items.length}
-        </span>
+        <div className="stage-count flex w-full flex-col items-center gap-3 short:gap-2">
+          {/* Stående: knapparna slutar före ugglan (Coach) i hörnet – "Klar" täcks aldrig.
+              Mobil: luft bara på ugglans sida (pe-14, speglas i RTL); surfplatta: lika på båda sidor.
+              Liggande står knapparna i vänsterspalten, långt från ugglan. */}
+          <div
+            className="flex w-full items-center justify-center gap-3 pe-14 md:px-16 side:px-0"
+            style={{ maxWidth: Math.max(size, 280) }}
+          >
+            <button
+              onClick={clear}
+              disabled={!hasInk || passed}
+              className={cn(
+                "flex h-16 flex-1 items-center justify-center gap-2 rounded-2xl bg-white text-lg font-bold text-zinc-600 shadow transition active:scale-95 dark:bg-zinc-800 dark:text-zinc-200 short:h-14",
+                (!hasInk || passed) && "opacity-50",
+              )}
+            >
+              <Eraser size={24} /> Sudda
+            </button>
+            <button
+              onClick={check}
+              disabled={passed}
+              className="flex h-16 flex-[1.4] items-center justify-center rounded-2xl bg-gradient-to-r from-green-400 to-emerald-600 text-xl font-black text-white shadow-lg transition active:scale-95 disabled:opacity-60 short:h-14"
+            >
+              Klar ✓
+            </button>
+          </div>
+
+          <span
+            dir="ltr"
+            className="font-semibold text-zinc-500 dark:text-zinc-400"
+          >
+            {index + 1} / {items.length}
+          </span>
+        </div>
       </div>
 
       <Coach event={coach.event} />

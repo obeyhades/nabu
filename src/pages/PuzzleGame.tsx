@@ -10,7 +10,7 @@ import { useLesson } from "../hooks/useLesson";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { LevelPicker } from "../components/LevelPicker";
 import { GameHeader } from "../components/GameHeader";
-import { QuestionStage, BigPicture } from "../components/QuestionStage";
+import { QuestionStage, BigPicture, RoundCount } from "../components/QuestionStage";
 import { Coach } from "../components/Coach";
 import { useCoach } from "../hooks/useCoach";
 import { VictoryScreen } from "../components/VictoryScreen";
@@ -19,6 +19,9 @@ import { graphemes, normChar } from "../lib/graphemes";
 import { playPop } from "../lib/sfx";
 import { shuffle } from "../lib/shuffle";
 import { cn } from "../lib/cn";
+import { GAME_MAIN, PROMPT_TEXT } from "../lib/layout";
+import { useElementSize } from "../hooks/useElementSize";
+import { balancedRowWidth } from "../lib/fit";
 import type { Concept, LangCode, Level, PlayCategory } from "../types";
 
 type Tile = { id: string; g: string; rot: number };
@@ -60,11 +63,23 @@ function clientPoint(e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo): 
   return { x: info.point.x - window.scrollX, y: info.point.y - window.scrollY };
 }
 
-/** Rutornas storlek krymper för långa ord (och raden radbryts vid behov). */
-function slotSize(n: number) {
-  if (n <= 5) return "h-16 w-16 text-4xl";
-  if (n <= 8) return "h-14 w-12 text-3xl";
-  return "h-12 w-10 text-2xl";
+const SLOT_GAP = 6;
+
+/**
+ * Rutornas storlek räknas från radens bredd, så att ordet ligger på EN rad
+ * (aldrig "fåge" + ett ensamt "l" på en smal mobil). Bara när rutorna skulle
+ * bli för små (< 36 px) delas ordet i två jämna rader. På en liggande mobil är
+ * höjden det som tar slut (svarsspalten bredvid bilden): där delas ordet först
+ * under 40 px, i två rader à högst 52 px (ett tryckmål för ett barnfinger).
+ */
+function slotLayout(n: number, rowW: number, low = false): { perRow: number; size: number } {
+  const fits = (k: number) => Math.floor((rowW - (k - 1) * SLOT_GAP) / k);
+  if (!rowW) return { perRow: n, size: 48 };
+  const one = Math.min(64, fits(n));
+  if (one >= (low ? 40 : 36) || n < 6) return { perRow: n, size: Math.max(28, one) };
+  const perRow = Math.ceil(n / 2);
+  // Liggande: två rader à högst 52 px ryms på höjden (10 bokstäver = 5 + 5 i stället för 31 px-rutor)
+  return { perRow, size: Math.max(28, Math.min(low ? 52 : 64, fits(perRow))) };
 }
 
 /**
@@ -90,6 +105,8 @@ export default function PuzzleGame() {
   const [solved, setSolved] = useState(false);
 
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [slotRow, { w: rowW }] = useElementSize<HTMLDivElement>();
+  const [bankBox, { w: bankW }] = useElementSize<HTMLDivElement>();
   const draggedRef = useRef(false);
   const timers = useRef<number[]>([]);
 
@@ -238,10 +255,34 @@ export default function PuzzleGame() {
   const n = current.target.length;
   const tileById = new Map(current.tiles.map((t) => [t.id, t]));
   const ghostAt = (i: number) => d.help === "full" || (d.help === "some" && i === 0);
+  // Liggande mobil (samma gräns som short: i CSS); räknas om när raden byter bredd (vridning)
+  const landscapeLow = typeof window !== "undefined" && window.innerWidth > window.innerHeight && window.innerHeight <= 500;
+  const slots = slotLayout(n, rowW, landscapeLow);
+  // Brickornas storlek i banken (48 eller 64 px) och jämna rader: 7 brickor = 4 + 3 och
+  // 8 = 4 + 4, aldrig 6 + 1 (samma regel som stavningsspelets bank). Mindre brickor på
+  // mobilen när ordet är långt (färre rader, sista brickan hamnar inte under kanten) eller
+  // när de stora skulle lämna en ensam bricka på sista raden (7 på 320 px = 3 + 3 + 1 →
+  // 4 + 3). Surfplattan har plats: där är brickorna alltid lika stora som rutorna.
+  const tileCount = current.tiles.length;
+  const tablet = typeof window !== "undefined" && window.innerWidth >= 768;
+  const bigGap = landscapeLow ? 8 : 12;
+  const bankInner = bankW - 8; // px-1 på båda sidor
+  const orphanAt64 = (() => {
+    if (bankInner <= 0) return false;
+    const perMax = Math.max(1, Math.floor((bankInner + bigGap) / (64 + bigGap)));
+    const rows = Math.ceil(tileCount / perMax);
+    return rows > 1 && tileCount - (rows - 1) * Math.ceil(tileCount / rows) === 1;
+  })();
+  const small = landscapeLow || (!tablet && (tileCount > 8 || orphanAt64));
+  const tileSize = small ? "h-12 min-w-12 text-3xl" : "h-16 min-w-16 text-4xl short:h-12 short:min-w-12 short:text-3xl";
+  const tileW = small ? 48 : 64;
+  // Små brickor står tätare: på 320 px ryms då 5 per rad (13 brickor = 3 rader, inte 4 + en ensam)
+  const tileGap = small ? 8 : 12;
+  const bankRowW = balancedRowWidth(tileCount, bankInner, tileW, tileGap);
 
   // 4) Pussla
   return (
-    <main dir={dir} className="mx-auto flex min-h-screen max-w-xl flex-col overflow-x-hidden p-4 sm:p-6">
+    <main dir={dir} className={GAME_MAIN}>
       <GameHeader
         onBack={() => setLevel(null)}
         progress={index / rounds.length}
@@ -250,129 +291,144 @@ export default function PuzzleGame() {
         combo={lesson.combo}
       />
 
-      <QuestionStage qkey={index}>
-        <div className="flex items-center gap-4">
-          <motion.div
-            animate={solved ? { scale: [1, 1.25, 1], rotate: [0, -8, 8, 0] } : { scale: 1 }}
-            transition={{ duration: 0.7 }}
-          >
-            <BigPicture className="text-8xl">{current.concept.emoji}</BigPicture>
-          </motion.div>
-          <motion.button
-            onClick={() => speak(word, lang, current.concept.id)}
-            aria-label="Hör ordet"
-            whileTap={{ scale: 0.9 }}
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg"
-          >
-            <Volume2 size={28} />
-          </motion.button>
+      <QuestionStage qkey={index} split>
+        <div className="stage-prompt">
+          <div className="flex items-center gap-4">
+            <motion.div
+              animate={solved ? { scale: [1, 1.25, 1], rotate: [0, -8, 8, 0] } : { scale: 1 }}
+              transition={{ duration: 0.7 }}
+            >
+              <BigPicture className="text-8xl low:text-7xl md:text-9xl short:text-6xl">{current.concept.emoji}</BigPicture>
+            </motion.div>
+            <motion.button
+              onClick={() => speak(word, lang, current.concept.id)}
+              aria-label="Hör ordet"
+              whileTap={{ scale: 0.9 }}
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg"
+            >
+              <Volume2 size={28} />
+            </motion.button>
+          </div>
+
+          <p className={cn(PROMPT_TEXT, "text-center")}>{solved ? "Snyggt! 🧩" : "Dra bokstäverna till rätt plats!"}</p>
         </div>
 
-        <p className="text-center font-semibold text-zinc-600 dark:text-zinc-300">
-          {solved ? "Snyggt! 🧩" : "Dra bokstäverna till rätt plats!"}
-        </p>
-
-        {/* Rutorna – läses höger→vänster på arabiska tack vare dir */}
-        <div dir={dir} className="flex w-full flex-wrap justify-center gap-1.5 sm:gap-2">
-          {current.target.map((g, i) => {
-            const tile = filled[i] ? tileById.get(filled[i]!) : undefined;
-            return (
-              <motion.div
-                key={i}
-                ref={(el) => {
-                  slotRefs.current[i] = el;
-                }}
-                animate={
-                  badSlot === i
-                    ? { x: [0, -6, 6, -4, 4, 0] }
-                    : solved
-                      ? { y: [0, -10, 0], transition: { delay: i * 0.06, duration: 0.4 } }
-                      : { x: 0, y: 0 }
-                }
-                className={cn(
-                  "relative flex items-center justify-center rounded-2xl border-4 font-bold",
-                  slotSize(n),
-                  tile
-                    ? solved
-                      ? "border-emerald-400 bg-emerald-100 dark:border-emerald-500 dark:bg-emerald-900/50"
-                      : "border-sky-300 bg-white dark:border-sky-600 dark:bg-zinc-800"
-                    : badSlot === i
-                      ? "border-dashed border-rose-400 bg-rose-50 dark:bg-rose-900/30"
-                      : "border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800/60"
-                )}
-              >
-                {tile ? (
-                  <motion.span
-                    layoutId={`tile-${tile.id}`}
-                    transition={{ type: "spring", stiffness: 500, damping: 28 }}
-                    className="text-zinc-800 dark:text-zinc-100"
+        {/* Låg skärm (320 × 568 med ett långt ord): tätare, så att sidan aldrig scrollar under ett drag */}
+        <div className="stage-answers flex w-full flex-col items-center justify-center gap-5 low:gap-3 short:gap-3">
+          {/* Rutorna – läses höger→vänster på arabiska tack vare dir. Hela ordet på en rad. */}
+          <div ref={slotRow} className="w-full">
+            <div
+              dir={dir}
+              className="mx-auto flex flex-wrap justify-center"
+              style={{ gap: SLOT_GAP, width: slots.perRow * slots.size + (slots.perRow - 1) * SLOT_GAP }}
+            >
+              {current.target.map((g, i) => {
+                const tile = filled[i] ? tileById.get(filled[i]!) : undefined;
+                return (
+                  <motion.div
+                    key={i}
+                    ref={(el) => {
+                      slotRefs.current[i] = el;
+                    }}
+                    animate={
+                      badSlot === i
+                        ? { x: [0, -6, 6, -4, 4, 0] }
+                        : solved
+                          ? { y: [0, -10, 0], transition: { delay: i * 0.06, duration: 0.4 } }
+                          : { x: 0, y: 0 }
+                    }
+                    style={{ width: slots.size, height: slots.size, fontSize: Math.round(slots.size * 0.58) }}
+                    className={cn(
+                      "relative flex items-center justify-center rounded-2xl font-bold",
+                      slots.size < 44 ? "rounded-xl border-[3px]" : "border-4",
+                      tile
+                        ? solved
+                          ? "border-emerald-400 bg-emerald-100 dark:border-emerald-500 dark:bg-emerald-900/50"
+                          : "border-sky-300 bg-white dark:border-sky-600 dark:bg-zinc-800"
+                        : badSlot === i
+                          ? "border-dashed border-rose-400 bg-rose-50 dark:bg-rose-900/30"
+                          : "border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800/60"
+                    )}
                   >
-                    {tile.g}
-                  </motion.span>
-                ) : (
-                  ghostAt(i) && (
-                    <span aria-hidden className="text-zinc-300 select-none dark:text-zinc-600">
-                      {g}
-                    </span>
-                  )
-                )}
-              </motion.div>
-            );
-          })}
+                    {tile ? (
+                      <motion.span
+                        layoutId={`tile-${tile.id}`}
+                        transition={{ type: "spring", stiffness: 500, damping: 28 }}
+                        className="text-zinc-800 dark:text-zinc-100"
+                      >
+                        {tile.g}
+                      </motion.span>
+                    ) : (
+                      ghostAt(i) && (
+                        <span aria-hidden className="text-zinc-300 select-none dark:text-zinc-600">
+                          {g}
+                        </span>
+                      )
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Brickorna – raderna lika långa (bankRowW; px-1 = 8 px ingår i maxbredden) */}
+          <div ref={bankBox} className="w-full">
+          <div
+            dir={dir}
+            className="mx-auto flex w-full flex-wrap justify-center px-1 py-2 low:py-1 short:py-1"
+            style={{ gap: tileGap, maxWidth: bankRowW ? bankRowW + 8 + tileGap - 1 : undefined }}
+          >
+            {current.tiles.map((tile) => {
+              if (usedIds.has(tile.id)) {
+                // tom plats så att de andra brickorna inte hoppar runt
+                return <div key={tile.id} aria-hidden className={cn(tileSize, "w-0")} />;
+              }
+              return (
+                <motion.button
+                  key={tile.id}
+                  layoutId={`tile-${tile.id}`}
+                  drag={!solved}
+                  dragSnapToOrigin
+                  dragElastic={0.9}
+                  dragMomentum={false}
+                  dragTransition={{ bounceStiffness: 400, bounceDamping: 22 }}
+                  onPointerDown={() => {
+                    draggedRef.current = false;
+                  }}
+                  onDragStart={() => {
+                    draggedRef.current = true;
+                  }}
+                  onDragEnd={(e, info) => onDrop(tile, e, info)}
+                  onClick={() => onTapTile(tile)}
+                  aria-label={`Bokstav ${tile.g}`}
+                  initial={{ scale: 0, rotate: 0 }}
+                  animate={{
+                    scale: 1,
+                    rotate:
+                      shaking === tile.id
+                        ? [tile.rot, tile.rot - 18, tile.rot + 18, tile.rot - 10, tile.rot + 10, tile.rot]
+                        : tile.rot,
+                  }}
+                  whileDrag={{ scale: 1.15, rotate: 0, zIndex: 50 }}
+                  whileTap={{ scale: 1.08 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  style={{ touchAction: "none" }}
+                  className={cn(
+                    "relative flex cursor-grab items-center justify-center rounded-2xl px-2 font-bold shadow-lg select-none active:cursor-grabbing",
+                    tileSize,
+                    "bg-gradient-to-br from-amber-200 to-orange-300 text-zinc-800 dark:from-amber-500 dark:to-orange-600 dark:text-white",
+                    shaking === tile.id && "ring-4 ring-rose-400"
+                  )}
+                >
+                  {tile.g}
+                </motion.button>
+              );
+            })}
+          </div>
+          </div>
         </div>
 
-        {/* Brickorna */}
-        <div dir={dir} className="flex w-full flex-wrap justify-center gap-3 px-1 py-2">
-          {current.tiles.map((tile) => {
-            if (usedIds.has(tile.id)) {
-              // tom plats så att de andra brickorna inte hoppar runt
-              return <div key={tile.id} aria-hidden className="h-16 w-16" />;
-            }
-            return (
-              <motion.button
-                key={tile.id}
-                layoutId={`tile-${tile.id}`}
-                drag={!solved}
-                dragSnapToOrigin
-                dragElastic={0.9}
-                dragMomentum={false}
-                dragTransition={{ bounceStiffness: 400, bounceDamping: 22 }}
-                onPointerDown={() => {
-                  draggedRef.current = false;
-                }}
-                onDragStart={() => {
-                  draggedRef.current = true;
-                }}
-                onDragEnd={(e, info) => onDrop(tile, e, info)}
-                onClick={() => onTapTile(tile)}
-                aria-label={`Bokstav ${tile.g}`}
-                initial={{ scale: 0, rotate: 0 }}
-                animate={{
-                  scale: 1,
-                  rotate:
-                    shaking === tile.id
-                      ? [tile.rot, tile.rot - 18, tile.rot + 18, tile.rot - 10, tile.rot + 10, tile.rot]
-                      : tile.rot,
-                }}
-                whileDrag={{ scale: 1.15, rotate: 0, zIndex: 50 }}
-                whileTap={{ scale: 1.08 }}
-                transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                style={{ touchAction: "none" }}
-                className={cn(
-                  "relative flex h-16 min-w-16 cursor-grab items-center justify-center rounded-2xl px-2 text-4xl font-bold shadow-lg select-none active:cursor-grabbing",
-                  "bg-gradient-to-br from-amber-200 to-orange-300 text-zinc-800 dark:from-amber-500 dark:to-orange-600 dark:text-white",
-                  shaking === tile.id && "ring-4 ring-rose-400"
-                )}
-              >
-                {tile.g}
-              </motion.button>
-            );
-          })}
-        </div>
-
-        <span dir="ltr" className="font-semibold text-zinc-500 dark:text-zinc-400">
-          {index + 1} / {rounds.length}
-        </span>
+        <RoundCount n={index + 1} of={rounds.length} />
       </QuestionStage>
 
       <Coach event={coach.event} />

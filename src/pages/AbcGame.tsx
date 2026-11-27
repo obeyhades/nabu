@@ -9,7 +9,8 @@ import { useLesson } from "../hooks/useLesson";
 import { CategoryPicker } from "../components/CategoryPicker";
 import { LevelPicker } from "../components/LevelPicker";
 import { GameHeader } from "../components/GameHeader";
-import { QuestionStage, BigPicture } from "../components/QuestionStage";
+import { QuestionStage, BigPicture, RoundCount } from "../components/QuestionStage";
+import { FitGrid } from "../components/FitGrid";
 import { ChoiceButton } from "../components/ChoiceButton";
 import { choiceState } from "../lib/choice";
 import { Coach } from "../components/Coach";
@@ -18,6 +19,7 @@ import { VictoryScreen } from "../components/VictoryScreen";
 import { difficulty } from "../lib/difficulty";
 import { shuffle } from "../lib/shuffle";
 import { cn } from "../lib/cn";
+import { GAME_MAIN, PROMPT_TEXT } from "../lib/layout";
 import type { Concept, Level, LangCode, PlayCategory } from "../types";
 
 const firstLetter = (c: Concept, lang: LangCode) => labelOf(c, lang).charAt(0).toLocaleUpperCase();
@@ -113,7 +115,7 @@ export default function AbcGame() {
   if (!current) return null;
 
   return (
-    <main dir={getLanguage(lang).dir} className="mx-auto flex min-h-screen max-w-xl flex-col p-6">
+    <main dir={getLanguage(lang).dir} className={GAME_MAIN}>
       <GameHeader
         onBack={() => setLevel(null)}
         progress={index / concepts.length}
@@ -122,37 +124,44 @@ export default function AbcGame() {
         combo={lesson.combo}
       />
 
-      <QuestionStage qkey={index}>
-        <BigPicture>{current.emoji}</BigPicture>
+      <QuestionStage qkey={index} split>
+        <div className="stage-prompt">
+          <BigPicture className="text-8xl low:text-7xl md:text-9xl short:text-6xl">{current.emoji}</BigPicture>
 
-        {d.help === "full" && <div className="text-3xl font-bold text-rose-500 dark:text-rose-300">{word}</div>}
+          {d.help === "full" && (
+            <div lang={lang} className="word-fit text-3xl font-bold text-rose-500 dark:text-rose-300 short:text-2xl">
+              {word}
+            </div>
+          )}
 
-        <button
-          onClick={() => speak(word, lang, current.id)}
-          className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-rose-500 shadow active:scale-95 dark:bg-zinc-800 dark:text-rose-300"
-        >
-          <Volume2 size={18} /> Hör ordet
-        </button>
+          <button
+            onClick={() => speak(word, lang, current.id)}
+            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 text-base font-semibold text-rose-500 shadow active:scale-95 dark:bg-zinc-800 dark:text-rose-300"
+          >
+            <Volume2 size={22} /> Hör ordet
+          </button>
 
-        <p className="font-semibold text-zinc-600 dark:text-zinc-300">Vilken bokstav börjar ordet på?</p>
+          <p className={PROMPT_TEXT}>Vilken bokstav börjar ordet på?</p>
+        </div>
 
-        <div className={cn("grid w-full gap-3", options.length <= 3 ? "grid-cols-3" : options.length === 4 ? "grid-cols-4" : "grid-cols-3 sm:grid-cols-4")}>
+        <FitGrid count={options.length} ratio={0.8} min={56} max={150}>
           {options.map((opt, i) => (
             <ChoiceButton
               key={opt}
               index={i}
               state={choiceState(opt, picked, answer)}
               onClick={() => choose(opt)}
-              className={cn("h-20 text-4xl font-black", picked === null && "text-rose-500 dark:text-rose-300")}
+              className={cn(
+                "text-[calc(var(--tile)*0.42)] font-black",
+                picked === null && "text-rose-500 dark:text-rose-300"
+              )}
             >
               {opt}
             </ChoiceButton>
           ))}
-        </div>
+        </FitGrid>
 
-        <span dir="ltr" className="font-semibold text-zinc-500 dark:text-zinc-400">
-          {index + 1} / {concepts.length}
-        </span>
+        <RoundCount n={index + 1} of={concepts.length} />
       </QuestionStage>
       <Coach event={coach.event} />
     </main>
